@@ -120,42 +120,52 @@ export default function LandingPage() {
     }
   };
 
-  // OTP verification handler.
-  const handleOTPVerification = async () => {
-    if (!otp) {
-      messageApi.error("Please enter your OTP code");
-      return;
+// --- OTP verification handler ---
+const handleOTPVerification = async () => {
+  if (!otp) {
+    messageApi.error("Please enter your OTP code");
+    return;
+  }
+  const otpPayload = { userId: registrationUserInfo?.user?.id, otp };
+  console.log("Sending OTP payload:", otpPayload);
+  
+  try {
+    const verifyEndpoint = `${process.env.NEXT_PUBLIC_API_URL}/users/verify-otp`;
+    const res = await fetch(verifyEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(otpPayload),
+    });
+    if (!res.ok) {
+      throw new Error("OTP verification failed");
     }
-    const otpPayload = { userId: registrationUserInfo?.user?.id, otp };
-    console.log("Sending OTP payload:", otpPayload);
-    try {
-      const verifyEndpoint = `${process.env.NEXT_PUBLIC_API_URL}/users/verify-otp`;
-      const res = await fetch(verifyEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(otpPayload),
-      });
-      if (!res.ok) {
-        throw new Error("OTP verification failed");
-      }
-      const data = await res.json();
-      console.log("OTP verified successfully", data);
-      messageApi.success("OTP verified successfully");
-      setOtpModalVisible(false);
-      // Redirect based on whether the onboarding is complete.
-      // If onboardingCompleted is false, start onboarding; otherwise, go to dashboard.
-      if (registrationUserInfo?.onboardingCompleted) {
-        router.push("/dashboard");
-      } else {
-        // Incorporate the first step of the onboarding wizard with a clear welcome message.
-        router.push("/onboarding/welcome");
-      }
+    const data = await res.json();
+    
+    // DEBUG: Log the full response data from the OTP verification API
+    console.log("OTP verification response data:", data);
+    
+    // Check and store the user id (assumes that data.user is returned)
+    if (data.user && data.user.id) {
+      localStorage.setItem("userId", data.user.id);
+    } else {
+      console.error("User object or user ID is missing from the response:", data);
+    }
+    
+    messageApi.success("OTP verified successfully");
+    setOtpModalVisible(false);
+    
+    if (registrationUserInfo?.onboardingCompleted) {
+      router.push("/dashboard");
+    } else {
+      router.push("/onboarding/secure-login");
+    }
+  } catch (error: any) {
+    console.error("Error verifying OTP:", error);
+    messageApi.error("OTP verification error: " + error.message);
+  }
+};
 
-    } catch (error: any) {
-      console.error("Error verifying OTP:", error);
-      messageApi.error("OTP verification error: " + error.message);
-    }
-  };
+
 
   // Handler for Resend OTP action.
   const handleResendOTP = async () => {

@@ -1,60 +1,79 @@
 "use client";
 
 import React, { useState } from "react";
-import { Layout, Form, Input, Button, Typography, Steps, Space, message } from "antd";
+import { Layout, Button, Typography, Steps, Space, message } from "antd";
 import { useRouter } from "next/navigation";
 
 const { Title, Paragraph, Text } = Typography;
 
 export default function SecureLoginPage() {
   const router = useRouter();
-  const [form] = Form.useForm();
+  const [loginLoading, setLoginLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
 
-  // Handler when the secure login form is submitted.
-  const onFinish = (values: any) => {
-    console.log("Secure login code submitted:", values);
+  // Handler for Secure Login:
+  // This API call automatically logs the user in using the secure, random password
+  // that was generated during signup. We expect the userId (or a similar identifier)
+  // is available in localStorage.
+  const onSecureLogin = async () => {
+    setLoginLoading(true);
+    try {
+      const userId = localStorage.getItem("userId"); // Ensure this is stored after OTP verification
+      if (!userId) {
+        throw new Error("User identification not found. Please complete signup again.");
+      }
 
-    // Here you would typically call your backend API to verify the secure login code.
-    // For example:
-    //
-    // fetch(`${process.env.NEXT_PUBLIC_API_URL}/verify-secure-code`, {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify({ code: values.secureCode })
-    // })
-    //   .then(res => {
-    //     if (res.ok) {
-    //       router.push("/onboarding/company-info");
-    //     } else {
-    //       throw new Error("Verification failed");
-    //     }
-    //   })
-    //   .catch(err => message.error("Verification failed. Please check your code."));
-    //
-    // For now, we simulate successful verification:
-    router.push("/onboarding/company-info");
+      // Call the new auto-login endpoint under auth routes.
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/auto-login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ userId })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Auto login failed.");
+      }
+
+      // Expect the response to return a token that includes tenant information.
+      const data = await response.json();
+      const { token } = data;
+      if (!token) {
+        throw new Error("Authentication token missing from response.");
+      }
+
+      // Save token in localStorage for subsequent API calls.
+      localStorage.setItem("token", token);
+
+      message.success("Login successful!");
+      router.push("/onboarding/company-info");
+    } catch (error: any) {
+      console.error("Secure login error:", error);
+      message.error("Secure login failed: " + error.message);
+    } finally {
+      setLoginLoading(false);
+    }
   };
 
-  // Handler to simulate resending the secure login code.
-  const onResendCode = () => {
+  // Handler for resending the secure login credentials email.
+  const onResendEmail = () => {
     setResendLoading(true);
-    // Simulate the API call delay.
+    // Simulate API call delay
     setTimeout(() => {
       setResendLoading(false);
-      message.success("Secure login code has been resent to your email.");
+      message.success("Secure login credentials have been resent to your registered email.");
     }, 2000);
   };
 
-  // Navigate back to the previous (welcome) page if needed.
+  // Navigate back to the Welcome page.
   const onBack = () => {
     router.push("/onboarding/welcome");
   };
 
-  // Handler to save progress, e.g., by persisting form data.
+  // Handler to save progress (this can be extended to actually persist progress data).
   const onSaveProgress = () => {
-    const data = form.getFieldsValue();
-    console.log("Progress saved:", data);
     message.success("Progress saved!");
   };
 
@@ -71,6 +90,7 @@ export default function SecureLoginPage() {
       {/* Main Content Area */}
       <Layout.Content style={{ padding: "24px", marginTop: "24px" }}>
         <div style={{ maxWidth: "600px", margin: "0 auto", textAlign: "center" }}>
+          {/* Manually defined steps; current index = 1 (Step 2 of 7) */}
           <Steps current={1} style={{ marginBottom: "24px" }}>
             <Steps.Step title="Welcome" />
             <Steps.Step title="Secure Login" />
@@ -84,30 +104,23 @@ export default function SecureLoginPage() {
           <Text strong>Step 2 of 7</Text>
           <Title level={2} style={{ margin: "8px 0" }}>Secure Login</Title>
           <Paragraph>
-            A secure login code has been sent to your registered email. Please check your inbox and enter the code below to continue.
+            A secure, random password was generated during your signup process and has been emailed to your registered address.
+            You do not need to manually create a password. Simply click the button below to log in securely.
           </Paragraph>
 
-          <Form form={form} layout="vertical" onFinish={onFinish} style={{ textAlign: "left" }}>
-            <Form.Item
-              label="Secure Login Code"
-              name="secureCode"
-              rules={[{ required: true, message: "Please enter your secure login code" }]}
-            >
-              <Input placeholder="Enter secure login code" />
-            </Form.Item>
+          <Space>
+            <Button onClick={onBack}>Back</Button>
+            <Button onClick={onSaveProgress}>Save Progress</Button>
+            <Button type="primary" onClick={onSecureLogin} loading={loginLoading}>
+              Secure Login
+            </Button>
+          </Space>
 
-            <Form.Item>
-              <Space>
-                <Button onClick={onBack}>Back</Button>
-                <Button onClick={onSaveProgress}>Save Progress</Button>
-                <Button type="primary" htmlType="submit">Login</Button>
-              </Space>
-            </Form.Item>
-          </Form>
-          
-          <Button type="link" loading={resendLoading} onClick={onResendCode}>
-            Resend Code
-          </Button>
+          <div style={{ marginTop: "16px" }}>
+            <Button type="link" loading={resendLoading} onClick={onResendEmail}>
+              Resend Credentials Email
+            </Button>
+          </div>
         </div>
       </Layout.Content>
 

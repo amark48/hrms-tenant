@@ -1,48 +1,56 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Layout, Steps, Typography, Button, message, Radio, Space } from "antd";
+import React, { useEffect, useState } from "react";
+import {
+  Layout,
+  Steps,
+  Typography,
+  Button,
+  Space,
+  Radio,
+  Select,
+  Segmented,
+  message,
+} from "antd";
 import { useRouter } from "next/navigation";
 
 const { Title, Text, Paragraph } = Typography;
 
 export default function SubscriptionSelectionPage() {
   const router = useRouter();
-  const [subscriptions, setSubscriptions] = useState([]);
-  const [selectedPlan, setSelectedPlan] = useState(null);
-  const [loading, setLoading] = useState(false);
+  // Initially an empty array; will be populated by the API response.
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [selectedPlan, setSelectedPlan] = useState<string | undefined>(undefined);
+  // Toggle between "dropdown" and "buttons" mode.
+  const [inputMode, setInputMode] = useState<"dropdown" | "buttons">("dropdown");
+  const [loading, setLoading] = useState<boolean>(false);
 
-  // Fetch subscription plans from the backend
+  // Fetch subscription plans from the backend API.
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      message.error("Authentication token is missing. Please log in.");
-      return;
-    }
-    setLoading(true);
-fetch(`${process.env.NEXT_PUBLIC_API_URL}/subscriptions`, {
-  method: "GET",
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${token}`
-  }
-})
-  .then((res) => res.json())
-  .then((data) => {
-    console.log("Subscriptions data:", data); // Debug log
-    setSubscriptions(data);
-    setLoading(false);
-  })
-  .catch((err) => {
-    console.error(err);
-    message.error("Failed to fetch subscription plans.");
-    setLoading(false);
-  });
-
+    const fetchSubscriptions = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/subscriptions`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch subscription plans.");
+        }
+        const data = await response.json();
+        // Assume the API returns an array of subscription objects.
+        setSubscriptions(data);
+      } catch (error: any) {
+        console.error("Error fetching subscriptions:", error);
+        message.error("Error fetching subscriptions: " + error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSubscriptions();
   }, []);
 
   const onSaveProgress = () => {
-    // Save the selected plan or current form data—as needed
+    // Implement saving logic as needed—for now, simply show a message.
     message.success("Progress saved!");
   };
 
@@ -51,7 +59,7 @@ fetch(`${process.env.NEXT_PUBLIC_API_URL}/subscriptions`, {
       message.error("Please select a subscription plan.");
       return;
     }
-    // Persist the chosen plan as needed before moving on
+    // You might want to persist the selection to an API or context.
     router.push("/onboarding/auth-setup");
   };
 
@@ -61,18 +69,29 @@ fetch(`${process.env.NEXT_PUBLIC_API_URL}/subscriptions`, {
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      {/* Header with Branding */}
-      <Layout.Header style={{ background: "#fff", padding: "0 24px", borderBottom: "1px solid #f0f0f0" }}>
+      {/* Header */}
+      <Layout.Header
+        style={{
+          background: "#fff",
+          padding: "0 24px",
+          borderBottom: "1px solid #f0f0f0",
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <img src="/logo.png" alt="Enterprise HRMS Logo" style={{ height: "40px", marginRight: "16px" }} />
-          <Title level={3} style={{ margin: 0, color: "#000" }}>Enterprise HRMS</Title>
+          <img
+            src="/logo.png"
+            alt="Enterprise HRMS Logo"
+            style={{ height: "40px", marginRight: "16px" }}
+          />
+          <Title level={3} style={{ margin: 0, color: "#000" }}>
+            Enterprise HRMS
+          </Title>
         </div>
       </Layout.Header>
 
       {/* Main Content */}
       <Layout.Content style={{ padding: "24px", marginTop: "24px" }}>
         <div style={{ maxWidth: "700px", margin: "0 auto" }}>
-          {/* Updated Steps: Manually listing each step */}
           <Steps current={3} style={{ marginBottom: "24px" }}>
             <Steps.Step title="Welcome" />
             <Steps.Step title="Company Info" />
@@ -83,41 +102,71 @@ fetch(`${process.env.NEXT_PUBLIC_API_URL}/subscriptions`, {
             <Steps.Step title="Review" />
           </Steps>
 
-          <div style={{ textAlign: "center" }}>
+          <div style={{ textAlign: "center", marginBottom: "24px" }}>
             <Text strong>Step 4 of 7</Text>
-            <Title level={2} style={{ margin: "8px 0" }}>Select Your Subscription Plan</Title>
+            <Title level={2} style={{ margin: "8px 0" }}>
+              Select Your Subscription Plan
+            </Title>
             <Paragraph>
-              Choose the plan that best meets your company’s needs. You can always adjust your subscription as your organization grows.
+              Choose the plan that best meets your company’s needs. You can always
+              adjust your subscription as your organization grows.
             </Paragraph>
           </div>
+          
+          {/* Toggle between Dropdown and Button options */}
+          <div style={{ marginBottom: "24px", textAlign: "center" }}>
+            <Segmented
+              options={[
+                { label: "Dropdown", value: "dropdown" },
+                { label: "Buttons", value: "buttons" },
+              ]}
+              value={inputMode}
+              onChange={(val: "dropdown" | "buttons") => setInputMode(val)}
+            />
+          </div>
 
-          <Radio.Group
-            onChange={(e) => setSelectedPlan(e.target.value)}
-            value={selectedPlan}
-            style={{ width: "100%" }}
-          >
-            {subscriptions.length > 0 ? (
-              subscriptions.map((plan) => (
+          {inputMode === "dropdown" ? (
+            <Select
+              placeholder="Select a subscription plan"
+              style={{ width: "100%" }}
+              loading={loading}
+              value={selectedPlan}
+              onChange={(val) => setSelectedPlan(val)}
+              options={subscriptions.map((plan) => ({
+                value: plan.id, // assuming backend returns a unique id
+                label: `${plan.name} - $${plan.price}/month`,
+              }))}
+            />
+          ) : (
+            <Radio.Group
+              onChange={(e) => setSelectedPlan(e.target.value)}
+              value={selectedPlan}
+              optionType="button"
+              buttonStyle="solid"
+              style={{ width: "100%" }}
+            >
+              {subscriptions.map((plan) => (
                 <Radio.Button
                   key={plan.id}
                   value={plan.id}
                   style={{
                     display: "block",
-                    width: "100%",
-                    marginBottom: "8px",
+                    textAlign: "left",
                     padding: "16px",
-                    textAlign: "left"
+                    marginBottom: "8px",
                   }}
                 >
-                  <Title level={4} style={{ marginBottom: "4px" }}>{plan.name}</Title>
-                  <Paragraph style={{ margin: 0 }}>{plan.description}</Paragraph>
-                  <Text strong>${plan.price} / month</Text>
+                  <div>
+                    <b>{plan.name}</b>
+                  </div>
+                  <div>{plan.description}</div>
+                  <div>
+                    <b>${plan.price} / month</b>
+                  </div>
                 </Radio.Button>
-              ))
-            ) : (
-              !loading && <Paragraph>No subscription plans available.</Paragraph>
-            )}
-          </Radio.Group>
+              ))}
+            </Radio.Group>
+          )}
 
           <div style={{ marginTop: "24px", textAlign: "center" }}>
             <Space>
@@ -131,6 +180,7 @@ fetch(`${process.env.NEXT_PUBLIC_API_URL}/subscriptions`, {
         </div>
       </Layout.Content>
 
+      {/* Footer */}
       <Layout.Footer style={{ textAlign: "center" }}>
         Enterprise HRMS ©2025 Created by Your Company Name
       </Layout.Footer>
