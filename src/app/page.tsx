@@ -90,9 +90,9 @@ export default function LandingPage() {
       lastName,
       company: companyName, // Send companyName as "company"
       email,
-      country, // abbreviated value (e.g., "US")
+      mailingCountry: country, // abbreviated value (e.g., "US")
       employeeCount,
-      phoneNumber: phone, // Send phone as "phoneNumber"
+      mailingPhone: phone, // Send phone as "phoneNumber"
       domain,
       industry: "other",
       isTenantAdmin: true,
