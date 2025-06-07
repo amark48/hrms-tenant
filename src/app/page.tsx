@@ -147,8 +147,10 @@ export default function LandingPage() {
       if (registrationUserInfo?.onboardingCompleted) {
         router.push("/dashboard");
       } else {
-        router.push("/onboarding");
+        // Incorporate the first step of the onboarding wizard with a clear welcome message.
+        router.push("/onboarding/welcome");
       }
+
     } catch (error: any) {
       console.error("Error verifying OTP:", error);
       messageApi.error("OTP verification error: " + error.message);
