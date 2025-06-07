@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Layout,
   Row,
@@ -16,7 +16,7 @@ import {
   message,
 } from "antd";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; // For redirection in Next.js 13+
+import { useRouter } from "next/navigation";
 
 const { Header, Content, Footer } = Layout;
 const { Title, Paragraph, Text } = Typography;
@@ -53,6 +53,33 @@ export default function LandingPage() {
   const [otp, setOtp] = useState("");
   const [messageApi, contextHolder] = message.useMessage();
 
+  // --- New state for Resend OTP Timer ---
+  const [resendTimer, setResendTimer] = useState<number>(60);
+  const [isResendDisabled, setIsResendDisabled] = useState<boolean>(true);
+
+  // Function to start the countdown timer for resending OTP.
+  const startResendTimer = () => {
+    setResendTimer(60);
+    setIsResendDisabled(true);
+    const timer = setInterval(() => {
+      setResendTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setIsResendDisabled(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // Start the resend timer whenever the OTP modal opens.
+  useEffect(() => {
+    if (otpModalVisible) {
+      startResendTimer();
+    }
+  }, [otpModalVisible]);
+
   // Registration submission handler.
   const onFinish = async (values: any) => {
     const { email, firstName, lastName, companyName, country, employeeCount, phone } = values;
@@ -85,9 +112,9 @@ export default function LandingPage() {
       }
       const data = await res.json();
       console.log("Registration successful", data);
-      // Store the full registration response. 
+      // Store the registration response for later OTP verification.
       setRegistrationUserInfo(data);
-      // Immediately open the OTP modal.
+      // Open the OTP verification modal immediately.
       setOtpModalVisible(true);
     } catch (error: any) {
       console.error("Error during registration:", error);
@@ -104,9 +131,7 @@ export default function LandingPage() {
     // Build the payload using the nested user id.
     const otpPayload = { userId: registrationUserInfo?.user?.id, otp };
     console.log("Sending OTP payload:", otpPayload);
-
     try {
-      // Updated OTP endpoint as requested.
       const verifyEndpoint = `${process.env.NEXT_PUBLIC_API_URL}/users/verify-otp`;
       const res = await fetch(verifyEndpoint, {
         method: "POST",
@@ -128,26 +153,49 @@ export default function LandingPage() {
     }
   };
 
+  // Handler for Resend OTP action.
+  const handleResendOTP = async () => {
+    // This is where you might call an API endpoint to resend the OTP.
+    messageApi.success("OTP resent successfully.");
+    startResendTimer();
+  };
+
   return (
     <Layout style={{ minHeight: "100vh", background: "#f0f2f5" }}>
       {contextHolder}
-      {/* OTP Verification Modal */}
+
+      {/* Enhanced OTP Verification Modal */}
       <Modal
         title="OTP Verification"
+        centered
         open={otpModalVisible}
         onCancel={() => setOtpModalVisible(false)}
         onOk={handleOTPVerification}
         okText="Verify OTP"
+        width={400}
       >
+        <div style={{ textAlign: "center", marginBottom: 16 }}>
+          <Text>We've sent an OTP to your corporate email.</Text>
+          <br />
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            Please check your inbox and enter the code below.
+          </Text>
+        </div>
         <Form layout="vertical">
-          <Form.Item label="Enter OTP" required>
+          <Form.Item label="OTP Code" required style={{ textAlign: "center" }}>
             <Input
-              placeholder="Enter OTP code"
+              placeholder="Enter OTP"
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
+              style={{ textAlign: "center", fontSize: 18 }}
             />
           </Form.Item>
         </Form>
+        <div style={{ textAlign: "center", marginTop: 16 }}>
+          <Text type="secondary">
+            {isResendDisabled ? `Resend OTP in ${resendTimer} seconds` : <a onClick={handleResendOTP}>Resend OTP</a>}
+          </Text>
+        </div>
       </Modal>
 
       {/* FULL-WIDTH TOP BAR */}
@@ -183,7 +231,7 @@ export default function LandingPage() {
               enterprise HRMS
             </Text>
           </div>
-          {/* Center: Menu using items prop */}
+          {/* Center: Navigation Menu */}
           <div style={{ flex: 1, textAlign: "center" }}>
             <Menu
               mode="horizontal"
@@ -211,7 +259,7 @@ export default function LandingPage() {
         </div>
       </Header>
 
-      {/* MAIN CONTENT (80% WIDTH) */}
+      {/* MAIN CONTENT */}
       <Content style={{ padding: "40px 20px" }}>
         <div style={{ maxWidth: "80%", margin: "auto" }}>
           <Row gutter={[32, 32]} align="middle">
