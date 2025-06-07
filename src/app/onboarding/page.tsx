@@ -14,7 +14,6 @@ import {
   Select,
 } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
-// Import the named export. You can choose QRCodeCanvas or QRCodeSVG.
 import { QRCodeCanvas as QRCode } from "qrcode.react";
 import { useRouter } from "next/navigation";
 
@@ -25,14 +24,51 @@ const { Option } = Select;
 
 export default function Onboarding() {
   const [current, setCurrent] = useState(0);
+  const [subscriptionOptions, setSubscriptionOptions] = useState<any[]>([]);
   const [form] = Form.useForm();
   const router = useRouter();
 
-  // For QR Code generation in the MFA step.
+  // States for QR Code generation in the MFA step.
   const [showQRCode, setShowQRCode] = useState(false);
   const [otpSecret, setOtpSecret] = useState("");
 
-  // On mount, prefill initial fields from localStorage if available.
+// In your useEffect that fetches subscription options:
+   useEffect(() => {
+    async function fetchSubscriptions() {
+        try {
+        const apiURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        // Retrieve the token from localStorage (ensure it is stored there by your auth process)
+        const token = localStorage.getItem("token");
+        
+        const res = await fetch(`${apiURL}/subscriptions`, {
+            method: "GET",
+            headers: {
+            "Content-Type": "application/json",
+            // Include token if available (adjust the header scheme if your backend expects a different format)
+            "Authorization": token ? `Bearer ${token}` : "",
+            },
+        });
+        
+        if (res.ok) {
+            const data = await res.json();
+            // Assuming response data is an array of subscription objects with id and name.
+            const options = data.map((plan: any) => ({
+            value: plan.id,
+            label: plan.name,
+            }));
+            setSubscriptionOptions(options);
+        } else {
+            console.error("Failed to fetch subscriptions:", res.statusText);
+        }
+        } catch (error) {
+        console.error("Error fetching subscriptions:", error);
+        }
+    }
+    fetchSubscriptions();
+    }, []);
+
+
+  // On mount, prefill initial fields from saved progress or registration info.
   useEffect(() => {
     const savedProgress = localStorage.getItem("onboardingProgress");
     if (savedProgress) {
@@ -48,7 +84,7 @@ export default function Onboarding() {
     }
   }, [form]);
 
-  // Helper to generate a random 16-character secret using Base32 characters.
+  // Helper to generate a random 16-character secret using Base32.
   const handleGenerateQRCode = () => {
     const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
     let secret = "";
@@ -59,16 +95,14 @@ export default function Onboarding() {
     setShowQRCode(true);
   };
 
-  // Define the onboarding steps. All components are rendered inside a single Form.
+  // Define the onboarding steps.
   const steps = [
     {
       title: "Welcome",
       content: (
         <div style={{ textAlign: "center" }}>
           <Title level={4}>Welcome to Enterprise HRMS Onboarding</Title>
-          <Text>
-            Let’s begin setting up your company profile and preferences.
-          </Text>
+          <Text>Let’s begin setting up your company profile and preferences.</Text>
         </div>
       ),
     },
@@ -151,9 +185,18 @@ export default function Onboarding() {
             rules={[{ required: true, message: "Please select a subscription type" }]}
           >
             <Select placeholder="Select a subscription plan">
-              <Option value="free">Free Trial</Option>
-              <Option value="standard">Standard</Option>
-              <Option value="premium">Premium</Option>
+              {subscriptionOptions.length > 0 ? (
+                subscriptionOptions.map((option) => (
+                  <Option key={option.value} value={option.value}>
+                    {option.label}
+                  </Option>
+                ))
+              ) : (
+                // In case options are not yet loaded, show a loading indicator or default value
+                <Option value="loading" disabled>
+                  Loading...
+                </Option>
+              )}
             </Select>
           </Form.Item>
         </>
@@ -308,8 +351,7 @@ export default function Onboarding() {
             {form.getFieldValue("enableMFA") && (
               <>
                 <div style={{ marginBottom: "8px" }}>
-                  <Text strong>MFA Types:</Text>{" "}
-                  {(form.getFieldValue("mfaTypes") || []).join(", ")}
+                  <Text strong>MFA Types:</Text> {(form.getFieldValue("mfaTypes") || []).join(", ")}
                 </div>
                 {(form.getFieldValue("mfaTypes") || []).includes("SMS") && (
                   <div style={{ marginBottom: "8px" }}>
@@ -342,11 +384,47 @@ export default function Onboarding() {
     },
   ];
 
-  // Save progress: store current form values in localStorage.
-  const saveProgress = () => {
-    const values = form.getFieldsValue();
-    localStorage.setItem("onboardingProgress", JSON.stringify(values));
-    message.success("Progress saved!");
+  // Updated Save Progress: Save locally and call API (injecting tenantId from registration info).
+  const saveProgress = async () => {
+    try {
+      const values = { ...form.getFieldsValue() };
+
+      // Inject the tenant id from registration info stored in localStorage.
+      const registrationInfoString = localStorage.getItem("registrationInfo");
+      if (registrationInfoString) {
+        const registrationInfo = JSON.parse(registrationInfoString);
+        if (registrationInfo.id) {
+          values.tenantId = registrationInfo.id;
+        }
+      }
+      
+      // Save locally as backup.
+      localStorage.setItem("onboardingProgress", JSON.stringify(values));
+
+      // Use API URL from environment.
+      const apiURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const response = await fetch(`${apiURL}/api/onboarding/save-progress`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+
+      const contentType = response.headers.get("Content-Type");
+      if (contentType && contentType.includes("application/json")) {
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.message || "Failed to save progress.");
+        }
+        message.success("Progress saved to server!");
+      } else {
+        const resultText = await response.text();
+        console.error("Unexpected response (not JSON):", resultText);
+        throw new Error("Failed to save progress: Invalid response from server");
+      }
+    } catch (error: any) {
+      console.error("Error saving progress:", error);
+      message.error("Error saving progress. Please try again.");
+    }
   };
 
   const next = async () => {
@@ -427,7 +505,6 @@ export default function Onboarding() {
             <Step key={item.title} title={item.title} />
           ))}
         </Steps>
-        {/* Render all step content inside a connected Form */}
         <Form form={form} layout="vertical">
           <div style={{ marginTop: "32px", minHeight: "200px" }}>
             {steps[current].content}
