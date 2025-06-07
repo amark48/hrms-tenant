@@ -48,7 +48,7 @@ export default function LandingPage() {
   const [form] = Form.useForm();
   const router = useRouter();
   const [otpModalVisible, setOtpModalVisible] = useState(false);
-  // Store the entire registration response returned from the API.
+  // Store the full registration response returned from the API.
   const [registrationUserInfo, setRegistrationUserInfo] = useState<any>(null);
   const [otp, setOtp] = useState("");
   const [messageApi, contextHolder] = message.useMessage();
@@ -112,9 +112,7 @@ export default function LandingPage() {
       }
       const data = await res.json();
       console.log("Registration successful", data);
-      // Store the registration response for later OTP verification.
       setRegistrationUserInfo(data);
-      // Open the OTP verification modal immediately.
       setOtpModalVisible(true);
     } catch (error: any) {
       console.error("Error during registration:", error);
@@ -128,7 +126,6 @@ export default function LandingPage() {
       messageApi.error("Please enter your OTP code");
       return;
     }
-    // Build the payload using the nested user id.
     const otpPayload = { userId: registrationUserInfo?.user?.id, otp };
     console.log("Sending OTP payload:", otpPayload);
     try {
@@ -145,8 +142,13 @@ export default function LandingPage() {
       console.log("OTP verified successfully", data);
       messageApi.success("OTP verified successfully");
       setOtpModalVisible(false);
-      // Redirect to dashboard after successful OTP verification.
-      router.push("/dashboard");
+      // Redirect based on whether the onboarding is complete.
+      // If onboardingCompleted is false, start onboarding; otherwise, go to dashboard.
+      if (registrationUserInfo?.onboardingCompleted) {
+        router.push("/dashboard");
+      } else {
+        router.push("/onboarding");
+      }
     } catch (error: any) {
       console.error("Error verifying OTP:", error);
       messageApi.error("OTP verification error: " + error.message);
@@ -155,9 +157,27 @@ export default function LandingPage() {
 
   // Handler for Resend OTP action.
   const handleResendOTP = async () => {
-    // This is where you might call an API endpoint to resend the OTP.
-    messageApi.success("OTP resent successfully.");
-    startResendTimer();
+    if (!registrationUserInfo?.user?.id) {
+      messageApi.error("User information missing.");
+      return;
+    }
+    const resendEndpoint = `${process.env.NEXT_PUBLIC_API_URL}/users/resend-otp`;
+    try {
+      const res = await fetch(resendEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: registrationUserInfo.user.id }),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to resend OTP");
+      }
+      const data = await res.json();
+      messageApi.success(data.message || "OTP resent successfully.");
+      startResendTimer();
+    } catch (error: any) {
+      console.error("Error resending OTP:", error);
+      messageApi.error("Error resending OTP: " + error.message);
+    }
   };
 
   return (
@@ -193,7 +213,9 @@ export default function LandingPage() {
         </Form>
         <div style={{ textAlign: "center", marginTop: 16 }}>
           <Text type="secondary">
-            {isResendDisabled ? `Resend OTP in ${resendTimer} seconds` : <a onClick={handleResendOTP}>Resend OTP</a>}
+            {isResendDisabled
+              ? `Resend OTP in ${resendTimer} seconds`
+              : <a onClick={handleResendOTP}>Resend OTP</a>}
           </Text>
         </div>
       </Modal>
