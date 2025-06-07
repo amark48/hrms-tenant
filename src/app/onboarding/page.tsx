@@ -39,15 +39,15 @@ export default function Onboarding() {
         const apiURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
         // Retrieve the token from localStorage (ensure it is stored there by your auth process)
         const token = localStorage.getItem("token");
-        
+        console.log("Using token:", token);
         const res = await fetch(`${apiURL}/subscriptions`, {
-            method: "GET",
-            headers: {
+        method: "GET",
+        headers: {
             "Content-Type": "application/json",
-            // Include token if available (adjust the header scheme if your backend expects a different format)
             "Authorization": token ? `Bearer ${token}` : "",
-            },
+        },
         });
+
         
         if (res.ok) {
             const data = await res.json();
