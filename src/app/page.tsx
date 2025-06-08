@@ -129,43 +129,48 @@ export default function LandingPage() {
     }
   };
 
-  // Modified OTP verification logic.
-  const handleOTPVerification = async () => {
-    if (!otp) {
-      messageApi.error("Please enter your OTP code");
-      return;
+// Modified OTP verification logic.
+const handleOTPVerification = async () => {
+  if (!otp) {
+    messageApi.error("Please enter your OTP code");
+    return;
+  }
+  const otpPayload = { userId: registrationUserInfo?.user?.id, otp };
+  try {
+    const verifyEndpoint = `${process.env.NEXT_PUBLIC_API_URL}/users/verify-otp`;
+    const res = await fetch(verifyEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(otpPayload),
+    });
+    if (!res.ok) {
+      throw new Error("OTP verification failed");
     }
-    const otpPayload = { userId: registrationUserInfo?.user?.id, otp };
-    try {
-      const verifyEndpoint = `${process.env.NEXT_PUBLIC_API_URL}/users/verify-otp`;
-      const res = await fetch(verifyEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(otpPayload),
-      });
-      if (!res.ok) {
-        throw new Error("OTP verification failed");
-      }
-      const data = await res.json();
-      // (Optional: if you wish to store user info in localStorage, do it here.)
-      messageApi.open({
-        type: "success",
-        duration: 5,
-        content: (
-          <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-            OTP verified successfully! Please log in using your temporary password.
-            You will be prompted to change your password and set up MFA for enhanced security.
-          </span>
-        ),
-      });
-      setOtpModalVisible(false);
-      // Redirect to the login page after OTP verification.
+    const data = await res.json();
+
+    // Show success toast with larger font size.
+    messageApi.open({
+      type: "success",
+      top: 100,
+      duration: 5,
+      content: (
+        <span style={{ fontSize: "14px", fontWeight: "bold" }}>
+          OTP verified successfully! Please log in using your temporary password.
+          You will be prompted to change your password and set up MFA for enhanced security.
+        </span>
+      ),
+    });
+    setOtpModalVisible(false);
+
+    // Delay the redirect by 3 seconds so the toast notification is visible.
+    setTimeout(() => {
       router.push("/login");
-    } catch (error: any) {
-      console.error("Error verifying OTP:", error);
-      messageApi.error("OTP verification error: " + error.message);
-    }
-  };
+    }, 6000);
+  } catch (error: any) {
+    console.error("Error verifying OTP:", error);
+    messageApi.error("OTP verification error: " + error.message);
+  }
+};
 
   const handleResendOTP = async () => {
     if (!registrationUserInfo?.user?.id) {

@@ -43,5 +43,22 @@ a {
 
 /* styles/globals.css */
 .ant-message-notice-content {
-  font-size: 22px !important;
+  font-size: 18px !important;
+}
+
+/* styles/globals.css */
+.ant-message {
+  top: 100px !important;
+}
+
+/* globals.css */
+
+/* Change toast notification text color for success messages to green */
+.ant-message-notice-success .ant-message-notice-content {
+  color: green !important;
+}
+
+/* Change toast notification text color for error messages to red */
+.ant-message-notice-error .ant-message-notice-content {
+  color: red !important;
 }
