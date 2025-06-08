@@ -34,7 +34,6 @@ const countries = [
   { label: "China", value: "CN" },
   { label: "Brazil", value: "BR" },
 ];
-
 const employeeCounts = [
   "1-10",
   "11-50",
@@ -85,6 +84,7 @@ export default function LandingPage() {
     }
   }, [otpModalVisible]);
 
+  // Modified onFinish to use your registration endpoint.
   const onFinish = async (values: any) => {
     const {
       email,
@@ -129,6 +129,7 @@ export default function LandingPage() {
     }
   };
 
+  // Modified OTP verification logic.
   const handleOTPVerification = async () => {
     if (!otp) {
       messageApi.error("Please enter your OTP code");
@@ -146,16 +147,20 @@ export default function LandingPage() {
         throw new Error("OTP verification failed");
       }
       const data = await res.json();
-      if (data.user && data.user.id) {
-        localStorage.setItem("userId", data.user.id);
-      }
-      messageApi.success("OTP verified successfully");
+      // (Optional: if you wish to store user info in localStorage, do it here.)
+      messageApi.open({
+        type: "success",
+        duration: 5,
+        content: (
+          <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+            OTP verified successfully! Please log in using your temporary password.
+            You will be prompted to change your password and set up MFA for enhanced security.
+          </span>
+        ),
+      });
       setOtpModalVisible(false);
-      if (registrationUserInfo?.onboardingCompleted) {
-        router.push("/dashboard");
-      } else {
-        router.push("/onboarding/secure-login");
-      }
+      // Redirect to the login page after OTP verification.
+      router.push("/login");
     } catch (error: any) {
       console.error("Error verifying OTP:", error);
       messageApi.error("OTP verification error: " + error.message);
@@ -189,7 +194,6 @@ export default function LandingPage() {
   return (
     <Layout style={{ minHeight: "100vh", background: "#f0f2f5" }}>
       {contextHolder}
-
       {/* OTP Verification Modal */}
       <Modal
         title="OTP Verification"
@@ -219,13 +223,14 @@ export default function LandingPage() {
         </Form>
         <div style={{ textAlign: "center", marginTop: 16 }}>
           <Text type="secondary">
-            {isResendDisabled
-              ? `Resend OTP in ${resendTimer} seconds`
-              : <a onClick={handleResendOTP}>Resend OTP</a>}
+            {isResendDisabled ? (
+              `Resend OTP in ${resendTimer} seconds`
+            ) : (
+              <a onClick={handleResendOTP}>Resend OTP</a>
+            )}
           </Text>
         </div>
       </Modal>
-
       {/* HEADER */}
       <Header
         style={{
@@ -251,11 +256,7 @@ export default function LandingPage() {
                 <img
                   src="/logo.png"
                   alt="Enterprise HRMS Logo"
-                  style={{
-                    height: "40px",
-                    marginRight: "16px",
-                    display: "block",
-                  }}
+                  style={{ height: "40px", marginRight: "16px", display: "block" }}
                 />
               </Link>
               <Title
@@ -292,7 +293,6 @@ export default function LandingPage() {
           </div>
         </div>
       </Header>
-
       {/* MAIN CONTENT */}
       <Content style={{ padding: "40px 20px" }}>
         <div style={containerStyle}>
@@ -325,10 +325,14 @@ export default function LandingPage() {
                     marginBottom: "32px",
                   }}
                 >
-                  Discover a modern, enterprise‑grade HR solution designed to streamline
-                  your processes and empower your workforce.
+                  Discover a modern, enterprise‐grade HR solution designed to
+                  streamline your processes and empower your workforce.
                 </Paragraph>
-                <Button type="primary" size="large" onClick={() => router.push("/features")}>
+                <Button
+                  type="primary"
+                  size="large"
+                  onClick={() => router.push("/features")}
+                >
                   Learn More
                 </Button>
               </Col>
@@ -347,7 +351,12 @@ export default function LandingPage() {
                   >
                     Get Started
                   </Title>
-                  <Form form={form} layout="vertical" onFinish={onFinish} scrollToFirstError>
+                  <Form
+                    form={form}
+                    layout="vertical"
+                    onFinish={onFinish}
+                    scrollToFirstError
+                  >
                     <Row gutter={16}>
                       <Col span={12}>
                         <Form.Item
@@ -469,19 +478,11 @@ export default function LandingPage() {
                 </Card>
               </Col>
             </Row>
-            {/* (Removed the info section, feature cards, and testimonials) */}
+            {/* (Additional sections like info, feature cards, and testimonials have been removed.) */}
           </div>
         </div>
       </Content>
-
-      <Footer
-        style={{
-          textAlign: "center",
-          padding: "20px",
-          background: "#fff",
-          borderTop: "1px solid #e8e8e8",
-        }}
-      >
+      <Footer style={{ textAlign: "center", padding: "20px", background: "#fff", borderTop: "1px solid #e8e8e8" }}>
         Enterprise HRMS ©2025 | All Rights Reserved.
       </Footer>
     </Layout>

@@ -33,7 +33,6 @@ function safeStringify(obj: any) {
   return JSON.stringify(obj, (key, value) => {
     if (typeof value === "object" && value !== null) {
       if (cache.has(value)) {
-        // Circular reference found, discard key.
         return;
       }
       cache.add(value);
@@ -80,7 +79,6 @@ export default function LoginPage() {
       );
 
       if (!res.ok) {
-        // If the API did not return 2xx, clear tenant state and show error.
         setTenantOptions([]);
         form.resetFields(["tenant"]);
         setSelectedTenant(null);
@@ -91,17 +89,11 @@ export default function LoginPage() {
       const data = await res.json();
       console.log("Tenant API response:", safeStringify(data));
 
-      // Check if the response is an array (as seen in your logs) or wrapped in an object.
       if (Array.isArray(data) && data.length > 0) {
         setTenantOptions(data);
         form.setFieldValue("tenant", data[0].id);
         setSelectedTenant(data[0].id);
-      } else if (
-        data &&
-        data.tenants &&
-        Array.isArray(data.tenants) &&
-        data.tenants.length > 0
-      ) {
+      } else if (data && data.tenants && Array.isArray(data.tenants) && data.tenants.length > 0) {
         setTenantOptions(data.tenants);
         form.setFieldValue("tenant", data.tenants[0].id);
         setSelectedTenant(data.tenants[0].id);
@@ -135,10 +127,13 @@ export default function LoginPage() {
   return (
     <Layout style={{ minHeight: "100vh", background: "#f0f2f5" }}>
       {contextHolder}
-
-      {/* Header */}
+      {/* Static Header */}
       <Header
         style={{
+          position: "fixed",
+          top: 0,
+          width: "100%",
+          zIndex: 1000,
           background: "#fff",
           borderBottom: "1px solid #f0f0f0",
           height: "64px",
@@ -150,30 +145,36 @@ export default function LoginPage() {
           <div
             style={{
               display: "flex",
-              justifyContent: "flex-start",
+              justifyContent: "space-between",
               alignItems: "center",
               height: "64px",
             }}
           >
-            <Link href="/">
-              <img
-                src="/logo.png"
-                alt="Enterprise HRMS Logo"
-                style={{ height: "40px", marginRight: "16px", display: "block" }}
-              />
-            </Link>
-            <Title
-              level={3}
-              style={{ margin: 0, lineHeight: "64px", color: "#000" }}
-            >
-              Enterprise HRMS
-            </Title>
+            {/* Left: Logo & Title */}
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <Link href="/">
+                <img
+                  src="/logo.png"
+                  alt="Enterprise HRMS Logo"
+                  style={{ height: "40px", marginRight: "16px", display: "block" }}
+                />
+              </Link>
+              <Title level={3} style={{ margin: 0, lineHeight: "64px", color: "#000" }}>
+                Enterprise HRMS
+              </Title>
+            </div>
+            {/* Right: Get Started Button */}
+            <div>
+              <Button type="primary" onClick={() => router.push("/signup")}>
+                Get Started
+              </Button>
+            </div>
           </div>
         </div>
       </Header>
 
-      {/* Main Content */}
-      <Content style={{ padding: "40px 20px" }}>
+      {/* Main Content (with top margin to prevent overlap with fixed header) */}
+      <Content style={{ padding: "40px 20px", marginTop: "64px" }}>
         <div style={containerStyle}>
           <Row justify="center">
             <Col xs={24} md={8} style={{ marginTop: "80px" }}>
@@ -181,38 +182,26 @@ export default function LoginPage() {
                 <Title level={3} style={{ textAlign: "center" }}>
                   Login
                 </Title>
-                <Form
-                  form={form}
-                  layout="vertical"
-                  onFinish={onFinish}
-                  requiredMark="optional"
-                >
+                <Form form={form} layout="vertical" onFinish={onFinish} requiredMark="optional">
                   {/* Email Field */}
                   <Form.Item
                     label="Email"
                     name="email"
                     rules={[
-                      {
-                        required: true,
-                        type: "email",
-                        message: "Please enter a valid email",
-                      },
+                      { required: true, type: "email", message: "Please enter a valid email" },
                     ]}
                   >
                     <Input
                       placeholder="yourname@company.com"
-                      onBlur={handleEmailBlur} // Triggers tenant lookup on blur.
-                      onChange={handleEmailChange} // Clears previous tenant options on change.
+                      onBlur={handleEmailBlur}
+                      onChange={handleEmailChange}
                     />
                   </Form.Item>
-
                   {/* Tenant Dropdown */}
                   <Form.Item
                     label="Tenant"
                     name="tenant"
-                    rules={[
-                      { required: true, message: "Please select your tenant" },
-                    ]}
+                    rules={[{ required: true, message: "Please select your tenant" }]}
                   >
                     <Select
                       placeholder="Tenant auto-detected from email"
@@ -224,25 +213,16 @@ export default function LoginPage() {
                       onChange={(value) => setSelectedTenant(value)}
                     />
                   </Form.Item>
-
                   {/* Password Field */}
                   <Form.Item
                     label="Password"
                     name="password"
-                    rules={[
-                      { required: true, message: "Please enter your password" },
-                    ]}
+                    rules={[{ required: true, message: "Please enter your password" }]}
                   >
                     <Input.Password placeholder="Password" />
                   </Form.Item>
-
                   <Form.Item>
-                    <Button
-                      type="primary"
-                      htmlType="submit"
-                      block
-                      style={{ marginTop: "12px" }}
-                    >
+                    <Button type="primary" htmlType="submit" block style={{ marginTop: "12px" }}>
                       Login
                     </Button>
                   </Form.Item>
@@ -255,16 +235,8 @@ export default function LoginPage() {
           </Row>
         </div>
       </Content>
-
       {/* Footer */}
-      <Footer
-        style={{
-          textAlign: "center",
-          padding: "20px",
-          background: "#fff",
-          borderTop: "1px solid #e8e8e8",
-        }}
-      >
+      <Footer style={{ textAlign: "center", padding: "20px", background: "#fff", borderTop: "1px solid #e8e8e8" }}>
         Enterprise HRMS ©2025 | All Rights Reserved.
       </Footer>
     </Layout>

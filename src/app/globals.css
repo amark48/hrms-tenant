@@ -40,3 +40,8 @@ a {
     color-scheme: dark;
   }
 }
+
+/* styles/globals.css */
+.ant-message-notice-content {
+  font-size: 22px !important;
+}
