@@ -1,126 +1,195 @@
 "use client";
 
-import React, { useState } from "react";
-import { Layout, Button, Typography, Steps, Space, message } from "antd";
+import React from "react";
 import { useRouter } from "next/navigation";
+import { Layout, Button, Typography, Steps, Space, Form, Input } from "antd";
+import { CheckOutlined } from "@ant-design/icons";
 
-const { Title, Paragraph, Text } = Typography;
+const { Title, Paragraph } = Typography;
 
-export default function SecureLoginPage() {
+export default function CompanyInfoPage() {
   const router = useRouter();
-  const [loginLoading, setLoginLoading] = useState(false);
-  const [resendLoading, setResendLoading] = useState(false);
+  const currentStep = 2; // "Company Info" is the third step (0-indexed 2)
 
-  // Handler for Secure Login:
-  // This API call automatically logs the user in using the secure, random password
-  // that was generated during signup. We expect the userId (or a similar identifier)
-  // is available in localStorage.
-  const onSecureLogin = async () => {
-    setLoginLoading(true);
-    try {
-      const userId = localStorage.getItem("userId"); // Ensure this is stored after OTP verification
-      if (!userId) {
-        throw new Error("User identification not found. Please complete signup again.");
-      }
+  // Common steps array; labels should match across pages.
+  const stepsList = [
+    "Welcome",
+    "Secure Login",
+    "Company Info",
+    "Upload Logo",
+    "Subscription",
+    "Enhance Security",
+    "Billing Info",
+    "Review Info",
+  ];
 
-      // Call the new auto-login endpoint under auth routes.
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/auto-login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ userId })
-      });
+  // Style for the custom step number icon.
+  const stepIconStyle: React.CSSProperties = {
+    display: "inline-block",
+    width: 24,
+    height: 24,
+    borderRadius: "50%",
+    backgroundColor: "#1890ff",
+    color: "#fff",
+    lineHeight: "24px",
+    textAlign: "center",
+    fontSize: 12,
+  };
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Auto login failed.");
-      }
-
-      // Expect the response to return a token that includes tenant information.
-      const data = await response.json();
-      const { token } = data;
-      if (!token) {
-        throw new Error("Authentication token missing from response.");
-      }
-
-      // Save token in localStorage for subsequent API calls.
-      localStorage.setItem("token", token);
-
-      message.success("Login successful!");
-      router.push("/onboarding/company-info");
-    } catch (error: any) {
-      console.error("Secure login error:", error);
-      message.error("Secure login failed: " + error.message);
-    } finally {
-      setLoginLoading(false);
+  // Helper function to render the custom step icon.
+  // For steps with index less than the currentStep, a check mark is overlaid.
+  const renderStepIcon = (index: number) => {
+    if (index < currentStep) {
+      return (
+        <div style={{ position: "relative", ...stepIconStyle }}>
+          {index + 1}
+          <CheckOutlined
+            style={{
+              position: "absolute",
+              bottom: -2,
+              right: -2,
+              backgroundColor: "#fff",
+              borderRadius: "50%",
+              fontSize: 10,
+              color: "#52c41a",
+              padding: "0 1px",
+            }}
+          />
+        </div>
+      );
     }
-  };
-
-  // Handler for resending the secure login credentials email.
-  const onResendEmail = () => {
-    setResendLoading(true);
-    // Simulate API call delay
-    setTimeout(() => {
-      setResendLoading(false);
-      message.success("Secure login credentials have been resent to your registered email.");
-    }, 2000);
-  };
-
-  // Navigate back to the Welcome page.
-  const onBack = () => {
-    router.push("/onboarding/welcome");
-  };
-
-  // Handler to save progress (this can be extended to actually persist progress data).
-  const onSaveProgress = () => {
-    message.success("Progress saved!");
+    return <span style={stepIconStyle}>{index + 1}</span>;
   };
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      {/* Branded Header */}
-      <Layout.Header style={{ background: "#fff", padding: "0 24px", borderBottom: "1px solid #f0f0f0" }}>
+      {/* Global CSS Overrides for the Steps so that text can wrap */}
+      <style jsx global>{`
+        .ant-steps-item {
+          white-space: normal !important;
+          flex: 1;
+          min-width: 80px !important;
+          text-align: center;
+        }
+        .ant-steps-item-title {
+          white-space: normal !important;
+          font-size: 12px !important;
+          word-break: break-word;
+        }
+      `}</style>
+
+      {/* Global Header */}
+      <Layout.Header
+        style={{
+          background: "#fff",
+          padding: "0 24px",
+          borderBottom: "1px solid #f0f0f0",
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <img src="/logo.png" alt="Enterprise HRMS Logo" style={{ height: "40px", marginRight: "16px" }} />
-          <Title level={3} style={{ margin: 0, color: "#000" }}>Enterprise HRMS</Title>
+          <img
+            src="/logo.png"
+            alt="Enterprise HRMS Logo"
+            style={{ height: "40px", marginRight: "16px" }}
+          />
+          <Title level={3} style={{ margin: 0, color: "#000" }}>
+            Enterprise HRMS
+          </Title>
         </div>
       </Layout.Header>
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <Layout.Content style={{ padding: "24px", marginTop: "24px" }}>
-        <div style={{ maxWidth: "600px", margin: "0 auto", textAlign: "center" }}>
-          {/* Manually defined steps; current index = 1 (Step 2 of 7) */}
-          <Steps current={1} style={{ marginBottom: "24px" }}>
-            <Steps.Step title="Welcome" />
-            <Steps.Step title="Secure Login" />
-            <Steps.Step title="Company Info" />
-            <Steps.Step title="Upload Logo" />
-            <Steps.Step title="Subscription" />
-            <Steps.Step title="Enhance Security" />
-            <Steps.Step title="Billing/Review" />
-          </Steps>
+        <div style={{ maxWidth: "700px", margin: "0 auto" }}>
+          {/* Steps Header */}
+          <div style={{ marginBottom: "24px" }}>
+            <Steps current={currentStep} size="small">
+              {stepsList.map((title, index) => (
+                <Steps.Step key={index} title={title} icon={renderStepIcon(index)} />
+              ))}
+            </Steps>
+          </div>
 
-          <Text strong>Step 2 of 7</Text>
-          <Title level={2} style={{ margin: "8px 0" }}>Secure Login</Title>
-          <Paragraph>
-            A secure, random password was generated during your signup process and has been emailed to your registered address.
-            You do not need to manually create a password. Simply click the button below to log in securely.
+          {/* Page Main Heading */}
+          <Title level={2} style={{ textAlign: "center", marginBottom: "16px" }}>
+            Company Information
+          </Title>
+
+          {/* Instructional Text */}
+          <Paragraph style={{ textAlign: "center", marginBottom: "24px" }}>
+            Please provide your company’s details so we can tailor your HRMS experience to your unique needs.
           </Paragraph>
 
-          <Space>
-            <Button onClick={onBack}>Back</Button>
-            <Button onClick={onSaveProgress}>Save Progress</Button>
-            <Button type="primary" onClick={onSecureLogin} loading={loginLoading}>
-              Secure Login
+          {/* Sample Form for Company Information */}
+          <Form layout="vertical">
+            <Form.Item
+              label="Company Name"
+              name="companyName"
+              rules={[{ required: true, message: "Please enter your company name" }]}
+            >
+              <Input placeholder="Your company name" />
+            </Form.Item>
+            <Form.Item
+              label="Phone Number"
+              name="companyPhone"
+              rules={[{ required: true, message: "Please enter your phone number" }]}
+            >
+              <Input placeholder="Contact phone number" />
+            </Form.Item>
+            <Form.Item
+              label="Street Address"
+              name="streetAddress"
+              rules={[{ required: true, message: "Please enter your street address" }]}
+            >
+              <Input placeholder="Street address" />
+            </Form.Item>
+            <Form.Item
+              label="City"
+              name="city"
+              rules={[{ required: true, message: "Please enter your city" }]}
+            >
+              <Input placeholder="City" />
+            </Form.Item>
+            <Form.Item
+              label="State/Province/Region"
+              name="state"
+              rules={[{ required: true, message: "Please enter your state or region" }]}
+            >
+              <Input placeholder="State/Province/Region" />
+            </Form.Item>
+            <Form.Item
+              label="Postal Code"
+              name="postalCode"
+              rules={[{ required: true, message: "Please enter your postal code" }]}
+            >
+              <Input placeholder="Postal Code" />
+            </Form.Item>
+            <Form.Item
+              label="Country"
+              name="country"
+              rules={[{ required: true, message: "Please enter your country" }]}
+            >
+              <Input placeholder="Country" />
+            </Form.Item>
+          </Form>
+
+          {/* Navigation Buttons */}
+          <Space
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              width: "100%",
+              marginTop: "24px",
+            }}
+          >
+            <Button onClick={() => router.push("/onboarding/secure-login")}>Back</Button>
+            <Button
+              type="primary"
+              onClick={() => router.push("/onboarding/upload-logo")}
+            >
+              Next: Upload Company Logo
             </Button>
           </Space>
-
-          <div style={{ marginTop: "16px" }}>
-            <Button type="link" loading={resendLoading} onClick={onResendEmail}>
-              Resend Credentials Email
-            </Button>
-          </div>
         </div>
       </Layout.Content>
 

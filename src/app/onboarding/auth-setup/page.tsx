@@ -11,10 +11,10 @@ import {
   Space,
   Radio,
   Checkbox,
-  Segmented,
   message,
 } from "antd";
 import { useRouter } from "next/navigation";
+import { QRCodeCanvas as QRCode } from "qrcode.react";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -22,18 +22,47 @@ export default function AuthSetupPage() {
   const router = useRouter();
   const [form] = Form.useForm();
 
+  // Retrieve the registration email and phone from localStorage.
+  // This assumes these values were stored during registration.
+  const registrationEmail =
+    (typeof window !== "undefined" && localStorage.getItem("registrationEmail")) || "";
+  const registrationPhone =
+    (typeof window !== "undefined" && localStorage.getItem("registrationPhone")) || "";
+
+  // Debug logs to verify received values.
+  useEffect(() => {
+    console.log("DEBUG: Registration email from localStorage:", registrationEmail);
+    console.log("DEBUG: Registration phone from localStorage:", registrationPhone);
+    // Also check the secure login token.
+    const token = typeof window !== "undefined" && localStorage.getItem("token");
+    console.log("DEBUG: Secure login token from localStorage:", token);
+  }, [registrationEmail, registrationPhone]);
+
+  // Set initial values on the Form using initialValues.
+  const formInitialValues = {
+    mfaEmail: registrationEmail,
+    phoneNumber: registrationPhone,
+  };
+
+  // Also use a useEffect to ensure the fields are set.
+  useEffect(() => {
+    form.setFieldsValue({ mfaEmail: registrationEmail, phoneNumber: registrationPhone });
+  }, [registrationEmail, registrationPhone, form]);
+
   // State for password configuration mode.
   const [generateMode, setGenerateMode] = useState<"auto" | "manual">("manual");
   const [generatedPassword, setGeneratedPassword] = useState<string>("");
 
   // MFA-related state.
   const [mfaEnabled, setMfaEnabled] = useState<boolean>(false);
-  // Expecting an array from the backend, e.g. ["SMS", "TOTP", "EMAIL"]
   const [mfaTypes, setMfaTypes] = useState<string[]>([]);
   const [selectedMfaTypes, setSelectedMfaTypes] = useState<string[]>([]);
-  const [qrcode, setQrcode] = useState<string | null>(null);
 
-  // Fetch available MFA types from the backend.
+  // State for TOTP QR Code generation.
+  const [otpSecret, setOtpSecret] = useState<string>("");
+  const [showQRCode, setShowQRCode] = useState<boolean>(false);
+
+  // Fetch MFA types from the backend.
   useEffect(() => {
     const fetchMfaTypes = async () => {
       try {
@@ -45,7 +74,7 @@ export default function AuthSetupPage() {
         }
         const data = await response.json();
         if (Array.isArray(data)) {
-          // Filter out falsy values.
+          // Filter out any null or empty values.
           setMfaTypes(data.filter((type) => type != null && type !== ""));
         } else {
           setMfaTypes([]);
@@ -58,10 +87,10 @@ export default function AuthSetupPage() {
     fetchMfaTypes();
   }, []);
 
-  // Handle password auto-generation.
+  // Handle auto-generation of password.
   useEffect(() => {
     if (generateMode === "auto") {
-      // For a production system use a robust password generator.
+      // For production, use a more robust generator.
       const randomPassword =
         Math.random().toString(36).slice(-8) +
         "!" +
@@ -77,9 +106,15 @@ export default function AuthSetupPage() {
     }
   }, [generateMode, form]);
 
-  // Simulate TOTP QR code generation.
-  const onGenerateQRCode = () => {
-    setQrcode("https://via.placeholder.com/150?text=QR+Code");
+  // Generate a TOTP secret and show the QR code.
+  const handleGenerateQRCode = () => {
+    const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    let secret = "";
+    for (let i = 0; i < 16; i++) {
+      secret += possible.charAt(Math.floor(Math.random() * possible.length));
+    }
+    setOtpSecret(secret);
+    setShowQRCode(true);
   };
 
   const onFinish = (values: any) => {
@@ -130,13 +165,17 @@ export default function AuthSetupPage() {
               Enhance Your Security
             </Title>
             <Paragraph>
-              Set up your password and configure multi-factor authentication for
-              maximum security.
+              Set up your password and configure multi-factor authentication for maximum security.
             </Paragraph>
           </div>
 
-          <Form form={form} layout="vertical" onFinish={onFinish}>
-            {/* Password Options */}
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={onFinish}
+            initialValues={formInitialValues}
+          >
+            {/* Password Configuration */}
             <Form.Item label="Password Options">
               <Radio.Group
                 value={generateMode}
@@ -189,7 +228,7 @@ export default function AuthSetupPage() {
               </Form.Item>
             )}
 
-            {/* MFA Checkbox placed outside a Form.Item so it directly uses local state */}
+            {/* MFA Section */}
             <div style={{ marginBottom: "16px" }}>
               <Checkbox
                 checked={mfaEnabled}
@@ -219,7 +258,9 @@ export default function AuthSetupPage() {
                         value: type,
                       }))}
                     value={selectedMfaTypes}
-                    onChange={(checkedValues) => setSelectedMfaTypes(checkedValues as string[])}
+                    onChange={(checkedValues) =>
+                      setSelectedMfaTypes(checkedValues as string[])
+                    }
                   />
                 </Form.Item>
 
@@ -236,16 +277,25 @@ export default function AuthSetupPage() {
                 )}
 
                 {selectedMfaTypes.includes("TOTP") && (
-                  <Form.Item label="TOTP Setup">
-                    <Button type="dashed" onClick={onGenerateQRCode}>
-                      Generate QR Code
-                    </Button>
-                    {qrcode && (
-                      <div style={{ marginTop: "16px" }}>
-                        <img src={qrcode} alt="QR Code" />
+                  <div style={{ marginTop: "16px", textAlign: "center", marginBottom: "24px" }}>
+                    {showQRCode ? (
+                      <div>
+                        <QRCode
+                          value={`otpauth://totp/EnterpriseHRMS:${
+                            form.getFieldValue("companyName") || "YourCompany"
+                          }?secret=${otpSecret}&issuer=EnterpriseHRMS`}
+                          size={150}
+                        />
+                        <Text strong style={{ display: "block", marginTop: "8px" }}>
+                          Scan this QR Code in your authenticator app
+                        </Text>
                       </div>
+                    ) : (
+                      <Button type="primary" onClick={handleGenerateQRCode}>
+                        Generate QR Code
+                      </Button>
                     )}
-                  </Form.Item>
+                  </div>
                 )}
 
                 {selectedMfaTypes.includes("EMAIL") && (
@@ -257,7 +307,7 @@ export default function AuthSetupPage() {
                       { type: "email", message: "Please enter a valid email" },
                     ]}
                   >
-                    <Input placeholder="Enter MFA email" />
+                    <Input placeholder="MFA Email" />
                   </Form.Item>
                 )}
               </>
