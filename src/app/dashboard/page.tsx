@@ -272,6 +272,7 @@ useEffect(() => {
                   { key: "attendance", label: <Link href="/dashboard/attendance">Attendance</Link> },
                   { key: "recruitment", label: <Link href="/dashboard/recruitment">Recruitment</Link> },
                   { key: "payroll", label: <Link href="/dashboard/payroll">Payroll</Link> },
+                  { key: "timesheet", label: <Link href="/dashboard/reports">Timesheet</Link> },
                   { key: "reports", label: <Link href="/dashboard/reports">Reports</Link> },
                   { key: "settings", label: <Link href="/dashboard/settings">Settings</Link> },
                 ]}
