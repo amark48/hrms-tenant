@@ -13,6 +13,7 @@
     "@ant-design/plots": "^2.4.0",
     "@ant-design/v5-patch-for-react-19": "^1.0.3",
     "antd": "^5.25.4",
+    "bcrypt": "^6.0.0",
     "dayjs": "^1.11.13",
     "next": "15.3.3",
     "nodemailer": "^7.0.3",

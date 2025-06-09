@@ -27,29 +27,15 @@ const containerStyle = {
   padding: "0 24px",
 };
 
-// Helper function for safe logging of objects with potential circular references.
-function safeStringify(obj: any) {
-  const cache = new Set();
-  return JSON.stringify(obj, (key, value) => {
-    if (typeof value === "object" && value !== null) {
-      if (cache.has(value)) {
-        return;
-      }
-      cache.add(value);
-    }
-    return value;
-  });
-}
-
 export default function LoginPage() {
   const router = useRouter();
   const [form] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
 
-  // Use environment variable with a fallback.
+  // Use environment variable with fallback.
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
-  // Debug logging to verify the API URL.
+  // Debug logging to verify API URL.
   console.log("NEXT_PUBLIC_API_URL:", process.env.NEXT_PUBLIC_API_URL);
   console.log("Using API URL:", apiUrl);
 
@@ -57,12 +43,7 @@ export default function LoginPage() {
   const [tenantOptions, setTenantOptions] = useState<any[]>([]);
   const [selectedTenant, setSelectedTenant] = useState<string | null>(null);
 
-  // Log tenant options whenever they update.
-  useEffect(() => {
-    console.log("Updated Tenant Options:", safeStringify(tenantOptions));
-  }, [tenantOptions]);
-
-  // Called when the email input loses focus.
+  // Tenant detection: when email loses focus.
   const handleEmailBlur = async () => {
     const email = form.getFieldValue("email");
     if (!email) return;
@@ -73,11 +54,9 @@ export default function LoginPage() {
     console.log("Extracted domain:", domain);
 
     try {
-      // Build the request URL using your environment variable.
       const res = await fetch(
         `${apiUrl}/tenants/by-domain?domain=${encodeURIComponent(domain)}`
       );
-
       if (!res.ok) {
         setTenantOptions([]);
         form.resetFields(["tenant"]);
@@ -85,9 +64,8 @@ export default function LoginPage() {
         messageApi.error(`Tenant not found for domain "${domain}"`);
         return;
       }
-
       const data = await res.json();
-      console.log("Tenant API response:", safeStringify(data));
+      console.log("Tenant API response:", data);
 
       if (Array.isArray(data) && data.length > 0) {
         setTenantOptions(data);
@@ -109,19 +87,55 @@ export default function LoginPage() {
     }
   };
 
-  // Clear tenant options when the email field changes.
+  // Clear tenant options on email change.
   const handleEmailChange = () => {
     setTenantOptions([]);
     setSelectedTenant(null);
     form.resetFields(["tenant"]);
   };
 
-  // When the form submits.
+  // onFinish: Call /auth/login and send tenant as companyID.
   const onFinish = async (values: any) => {
-    console.log("Login values:", safeStringify(values));
-    // Here, pass the login credentials (including tenant and password) to your authentication API.
-    messageApi.success("Login successful!");
-    router.push("/dashboard");
+    console.log("Login values:", values);
+    // Extract and rename tenant to companyID.
+    const { email, tenant, password } = values;
+    const payload = { email, companyID: tenant, password };
+
+    try {
+      const loginEndpoint = `${apiUrl}/auth/login`;
+      const response = await fetch(loginEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Login failed. Please check your credentials.");
+      }
+      const data = await response.json();
+      messageApi.success("Login successful!");
+      
+      // Store the token and user information in localStorage so that Dashboard can read them.
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      console.log("Stored token:", data.token);
+      console.log("Stored user:", data.user);
+      
+      // Redirect to the dashboard page
+      router.push("/dashboard");
+    } catch (error: any) {
+      let errorMessage = error.message;
+      // Attempt to parse error message as JSON.
+      try {
+        const parsed = JSON.parse(error.message);
+        if (parsed.message) {
+          errorMessage = parsed.message;
+        }
+      } catch (e) {
+        // If parsing fails, continue with original message.
+      }
+      messageApi.error("Login error: " + errorMessage);
+    }
   };
 
   return (
@@ -172,8 +186,7 @@ export default function LoginPage() {
           </div>
         </div>
       </Header>
-
-      {/* Main Content (with top margin to prevent overlap with fixed header) */}
+      {/* Main Content (with top margin to prevent header overlap) */}
       <Content style={{ padding: "40px 20px", marginTop: "64px" }}>
         <div style={containerStyle}>
           <Row justify="center">
@@ -182,7 +195,12 @@ export default function LoginPage() {
                 <Title level={3} style={{ textAlign: "center" }}>
                   Login
                 </Title>
-                <Form form={form} layout="vertical" onFinish={onFinish} requiredMark="optional">
+                <Form
+                  form={form}
+                  layout="vertical"
+                  onFinish={onFinish}
+                  requiredMark="optional"
+                >
                   {/* Email Field */}
                   <Form.Item
                     label="Email"
@@ -201,7 +219,9 @@ export default function LoginPage() {
                   <Form.Item
                     label="Tenant"
                     name="tenant"
-                    rules={[{ required: true, message: "Please select your tenant" }]}
+                    rules={[
+                      { required: true, message: "Please select your tenant" },
+                    ]}
                   >
                     <Select
                       placeholder="Tenant auto-detected from email"
@@ -222,7 +242,12 @@ export default function LoginPage() {
                     <Input.Password placeholder="Password" />
                   </Form.Item>
                   <Form.Item>
-                    <Button type="primary" htmlType="submit" block style={{ marginTop: "12px" }}>
+                    <Button
+                      type="primary"
+                      htmlType="submit"
+                      block
+                      style={{ marginTop: "12px" }}
+                    >
                       Login
                     </Button>
                   </Form.Item>
@@ -236,7 +261,14 @@ export default function LoginPage() {
         </div>
       </Content>
       {/* Footer */}
-      <Footer style={{ textAlign: "center", padding: "20px", background: "#fff", borderTop: "1px solid #e8e8e8" }}>
+      <Footer
+        style={{
+          textAlign: "center",
+          padding: "20px",
+          background: "#fff",
+          borderTop: "1px solid #e8e8e8",
+        }}
+      >
         Enterprise HRMS ©2025 | All Rights Reserved.
       </Footer>
     </Layout>

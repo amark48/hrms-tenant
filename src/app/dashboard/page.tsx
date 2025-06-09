@@ -11,8 +11,9 @@ import {
   Avatar,
   Typography,
   Table,
-  message,
   Dropdown,
+  Modal,
+  Button,
 } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,7 +24,6 @@ import { Pie, Line, Column } from "@ant-design/plots";
 const { Header, Content, Footer } = Layout;
 const { Title, Text } = Typography;
 
-// Reusable container style for centering content.
 const containerStyle = {
   maxWidth: "1200px",
   margin: "0 auto",
@@ -81,7 +81,8 @@ const pieConfig = {
   colorField: "type",
   radius: 0.8,
   label: {
-    type: "outer",
+    // Use the offset property to render labels outside the pie chart.
+    offset: 20,
     content: (data) => {
       const total = pieData.reduce((acc, item) => acc + item.value, 0);
       const percentage = ((data.value / total) * 100).toFixed(1);
@@ -109,9 +110,7 @@ const columnConfig = {
     style: { fill: "#FFFFFF", opacity: 0.6 },
   },
   xAxis: { label: { autoHide: true, autoRotate: false } },
-  meta: {
-    performance: { alias: "Performance (%)" },
-  },
+  meta: { performance: { alias: "Performance (%)" } },
 };
 
 // Sample data for an Employee Matrix table.
@@ -130,8 +129,67 @@ const matrixData = [
 
 export default function Dashboard() {
   const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
 
-  // Define user dropdown menu items.
+  // On mount, get the token and fetch the user profile.
+useEffect(() => {
+  // Get the token from localStorage
+  const token = localStorage.getItem("token");
+  if (!token) {
+    console.log("[DEBUG Dashboard] No token found in localStorage, redirecting to /login");
+    router.push("/login");
+    return;
+  }
+  
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  fetch(`${apiUrl}/users/me`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+  })
+    .then((res) => {
+      if (!res.ok) {
+        console.log("[DEBUG Dashboard] Response not OK, status:", res.status);
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      return res.json();
+    })
+    .then((data) => {
+      console.log("[DEBUG Dashboard] Fetched user profile:", data.user);
+      setUser(data.user);
+    })
+    .catch((err) => {
+      console.error("[ERROR Dashboard] Error fetching user profile:", err);
+      // Clear the expired (or problematic) token and related user data
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      console.log("[DEBUG Dashboard] Cleared token and user info, redirecting to /login");
+      // Force the user to re-login
+      router.push("/login");
+    });
+}, [router]);
+
+
+
+  // Show the password modal if user is loaded and onboarding is incomplete.
+  useEffect(() => {
+    if (user && user.onboardingCompleted === false) {
+      setPasswordModalVisible(true);
+    }
+  }, [user]);
+
+  const handlePasswordChange = () => {
+    router.push("/settings/change-password");
+  };
+
+  const dismissModal = () => {
+    setPasswordModalVisible(false);
+  };
+
+  // User menu items.
   const userMenuItems = [
     {
       key: "profile",
@@ -142,8 +200,9 @@ export default function Dashboard() {
       label: (
         <span
           onClick={() => {
-            // Example logout: clear stored user and redirect.
             localStorage.removeItem("userId");
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
             router.push("/login");
           }}
         >
@@ -152,7 +211,12 @@ export default function Dashboard() {
       ),
     },
   ];
-  const userMenu = <Menu items={userMenuItems} />;
+
+  // Prepare a safe display value for the user's role.
+  const displayRole =
+    user && user.role && typeof user.role === "object"
+      ? user.role.name || "N/A"
+      : user?.role || "N/A";
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -179,9 +243,9 @@ export default function Dashboard() {
               height: "64px",
             }}
           >
-            {/* Left: Logo & Title */}
+            {/* Logo & Title (links to /dashboard) */}
             <div style={{ display: "flex", alignItems: "center" }}>
-              <Link href="/">
+              <Link href="/dashboard">
                 <img
                   src="/logo.png"
                   alt="Enterprise HRMS Logo"
@@ -192,7 +256,7 @@ export default function Dashboard() {
                 Enterprise HRMS
               </Title>
             </div>
-            {/* Center: Navigation Menu */}
+            {/* Navigation Menu */}
             <div style={{ flexGrow: 1, textAlign: "center" }}>
               <Menu
                 mode="horizontal"
@@ -213,9 +277,9 @@ export default function Dashboard() {
                 ]}
               />
             </div>
-            {/* Right: User Avatar with Dropdown */}
+            {/* User Avatar with Dropdown */}
             <div>
-              <Dropdown overlay={userMenu} trigger={["click"]}>
+              <Dropdown menu={{ items: userMenuItems }} trigger={["click"]}>
                 <Avatar style={{ backgroundColor: "#87d068", cursor: "pointer" }} icon={<UserOutlined />} />
               </Dropdown>
             </div>
@@ -223,9 +287,29 @@ export default function Dashboard() {
         </div>
       </Header>
 
-      {/* Main Content with top margin to account for fixed header */}
+      {/* Main Content */}
       <Content style={{ padding: "40px 20px", marginTop: "64px" }}>
         <div style={containerStyle}>
+          {/* User Status Card */}
+          {user ? (
+            <Card style={{ marginBottom: "24px" }}>
+              <Text strong>Logged in as: </Text>
+              <Text>
+                {user.firstName} {user.lastName} ({user.email})
+              </Text>
+              <br />
+              <Text strong>Role: </Text>
+              <Text>{displayRole}</Text>
+              <br />
+              <Text strong>Onboarding Completed: </Text>
+              <Text>{user.onboardingCompleted ? "Yes" : "No"}</Text>
+            </Card>
+          ) : (
+            <Card style={{ marginBottom: "24px" }}>
+              <Text>Loading user info...</Text>
+            </Card>
+          )}
+
           {/* Statistics Section */}
           <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
             {stats.map((item, index) => (
@@ -240,13 +324,11 @@ export default function Dashboard() {
 
           {/* Analytics Section */}
           <Row gutter={[32, 32]} style={{ marginBottom: "40px" }}>
-            {/* Employee Trends (Line Chart) */}
             <Col xs={24} md={12}>
               <Card title="Employee Trends" style={{ minHeight: "260px" }}>
                 <Line {...lineConfig} />
               </Card>
             </Col>
-            {/* Department Distribution (Pie Chart) */}
             <Col xs={24} md={12}>
               <Card title="Department Distribution" style={{ minHeight: "260px" }}>
                 <div style={{ height: 250 }}>
@@ -293,10 +375,29 @@ export default function Dashboard() {
         </div>
       </Content>
 
-      {/* FOOTER */}
+      {/* Footer */}
       <Footer style={{ textAlign: "center", padding: "20px", background: "#fff", borderTop: "1px solid #e8e8e8" }}>
         Enterprise HRMS ©2025 | All Rights Reserved.
       </Footer>
+
+      {/* Password Change Modal */}
+      <Modal
+        title="Password Change Required"
+        open={passwordModalVisible}
+        onCancel={dismissModal}
+        footer={[
+          <Button key="later" onClick={dismissModal}>
+            Remind Me Later
+          </Button>,
+          <Button key="change" type="primary" onClick={handlePasswordChange}>
+            Change Password Now
+          </Button>,
+        ]}
+      >
+        <p>
+          It looks like you haven't changed your temporary password yet. For improved security, please update your password.
+        </p>
+      </Modal>
     </Layout>
   );
 }
