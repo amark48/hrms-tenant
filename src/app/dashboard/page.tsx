@@ -13,8 +13,6 @@ import {
   Table,
   Modal,
   Button,
-  Form,
-  Input,
   message,
 } from "antd";
 import Link from "next/link";
@@ -105,10 +103,7 @@ const columnConfig = {
   xField: "department",
   yField: "performance",
   color: "#17a2b8",
-  label: {
-    position: "middle",
-    style: { fill: "#FFFFFF", opacity: 0.6 },
-  },
+  label: { position: "middle", style: { fill: "#FFFFFF", opacity: 0.6 } },
   xAxis: { label: { autoHide: true, autoRotate: false } },
   meta: { performance: { alias: "Performance (%)" } },
 };
@@ -135,8 +130,8 @@ export default function Dashboard() {
   const [tenantEditModalVisible, setTenantEditModalVisible] = useState(false);
   const [tenantLoading, setTenantLoading] = useState(false);
   const [mfaTypes, setMfaTypes] = useState<string[]>([]);
+  const [mfaRawData, setMfaRawData] = useState<any>(null);
 
-  // Top navigation menu items.
   const menuItems = [
     { key: "dashboard", label: <Link href="/dashboard">Dashboard</Link> },
     { key: "employees", label: <Link href="/dashboard/employees">Employees</Link> },
@@ -148,7 +143,6 @@ export default function Dashboard() {
     { key: "settings", label: <Link href="/dashboard/settings">Settings</Link> },
   ];
 
-  // User dropdown menu items.
   const userMenuItems = [
     { key: "profile", label: <Link href="/dashboard/profile">Profile</Link> },
     {
@@ -168,7 +162,6 @@ export default function Dashboard() {
     },
   ];
 
-  // Fetch user profile.
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -204,7 +197,6 @@ export default function Dashboard() {
       });
   }, [router]);
 
-  // Fetch tenant information.
   useEffect(() => {
     if (user && user.tenantId) {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -228,31 +220,31 @@ export default function Dashboard() {
     }
   }, [user]);
 
-  // Fetch MFA types when the tenant edit modal opens.
   useEffect(() => {
     if (tenantEditModalVisible) {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      fetch(`${apiUrl}/auth/get-mfa-types`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      })
-        .then((res) => {
-          if (!res.ok) {
-            throw new Error(`Failed to fetch MFA types: ${res.status}`);
+      const fetchMfaTypes = async () => {
+        try {
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/auth/get-mfa-types`
+          );
+          if (!response.ok) {
+            throw new Error("Failed to fetch MFA types.");
           }
-          return res.json();
-        })
-        .then((data) => {
-          console.log("[DEBUG Dashboard] MFA types fetched:", data);
-          setMfaTypes(data.mfaTypes || []);
-        })
-        .catch((err) => {
-          console.error("Error fetching MFA types:", err);
-        });
-    }
+          const data = await response.json();
+          if (Array.isArray(data)) {
+            // Filter out any null or empty values.
+            setMfaTypes(data.filter((type) => type != null && type !== ""));
+          } else {
+            setMfaTypes([]);
+          }
+        } catch (error: any) {
+          console.error("Error fetching MFA types:", error);
+          message.error("Error fetching MFA types: " + error.message);
+        }
+      };
+      fetchMfaTypes();
   }, [tenantEditModalVisible]);
 
-  // Show onboarding modal if needed.
   useEffect(() => {
     if (user && user.onboardingCompleted === false) {
       setOnboardingModalVisible(true);
@@ -426,6 +418,7 @@ export default function Dashboard() {
         visible={tenantEditModalVisible}
         tenant={tenant}
         mfaTypes={mfaTypes}
+        mfaRawData={mfaRawData}
         onOk={(values) => {
           setTenantLoading(true);
           const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -435,7 +428,8 @@ export default function Dashboard() {
             body: JSON.stringify(values),
           })
             .then((res) => {
-              if (!res.ok) throw new Error(`Failed to update tenant info: ${res.status}`);
+              if (!res.ok)
+                throw new Error(`Failed to update tenant info: ${res.status}`);
               return res.json();
             })
             .then((data) => {

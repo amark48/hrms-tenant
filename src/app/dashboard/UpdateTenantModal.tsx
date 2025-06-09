@@ -13,7 +13,9 @@ import {
   Col,
 } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
-
+import QRCode from "qrcode.react";
+import { Typography } from "antd";
+const { Text } = Typography;
 const { Option } = Select;
 
 const countries = [
@@ -29,17 +31,16 @@ const USStates = [
   { code: "AZ", name: "Arizona" },
   { code: "CA", name: "California" },
   { code: "NY", name: "New York" },
-  // ... add remaining US states as needed
+  // … add remaining US states as needed
 ];
 
 const CAProvinces = [
   { code: "AB", name: "Alberta" },
   { code: "BC", name: "British Columbia" },
   { code: "ON", name: "Ontario" },
-  // ... add remaining provinces/territories as needed
+  // … add remaining provinces/territories as needed
 ];
 
-// Helper to render state/province field based on selected country
 const renderStateField = (country: string, fieldName: string, required: boolean = true) => {
   if (country === "US") {
     return (
@@ -90,13 +91,14 @@ export interface UpdateTenantModalProps {
   visible: boolean;
   tenant: any;
   mfaTypes: string[];
+  mfaRawData?: any;
   onOk: (updatedData: any) => void;
   onCancel: () => void;
   confirmLoading: boolean;
 }
 
 export default function UpdateTenantModal(props: UpdateTenantModalProps) {
-  const { visible, tenant, mfaTypes, onOk, onCancel, confirmLoading } = props;
+  const { visible, tenant, mfaTypes, mfaRawData, onOk, onCancel, confirmLoading } = props;
   const [form] = Form.useForm();
 
   // Pre-fill form when tenant data is available.
@@ -122,7 +124,7 @@ export default function UpdateTenantModal(props: UpdateTenantModalProps) {
     }
   }, [tenant, form]);
 
-  // Use Form.useWatch for country changes.
+  // Watch for country fields.
   const contactCountry = Form.useWatch("contactCountry", form);
   const billingCountry = Form.useWatch("billingCountry", form);
 
@@ -143,12 +145,14 @@ export default function UpdateTenantModal(props: UpdateTenantModalProps) {
       billingCountry: values.contactCountry,
       billingPhone: values.contactPhone,
     });
+    console.log("Contact copied to billing:", values);
   };
 
   const handleOk = () => {
     form
       .validateFields()
       .then((values) => {
+        console.log("Form values on submit:", values);
         onOk(values);
       })
       .catch((info) => {
@@ -167,7 +171,7 @@ export default function UpdateTenantModal(props: UpdateTenantModalProps) {
       forceRender
       destroyOnClose
     >
-      <Form form={form} layout="vertical">
+      <Form form={form} layout="vertical" onValuesChange={(changed, all) => console.log("Form changed:", changed, all)}>
         <Form.Item
           label="Tenant Name"
           name="name"
@@ -180,23 +184,76 @@ export default function UpdateTenantModal(props: UpdateTenantModalProps) {
             <Button icon={<UploadOutlined />}>Upload Logo</Button>
           </Upload>
         </Form.Item>
-        <Form.Item name="enableMFA" label="Enable MFA for employees" valuePropName="checked">
-          <Checkbox>Enable MFA</Checkbox>
-        </Form.Item>
-        <Form.Item noStyle shouldUpdate={(prevValues, curValues) => prevValues.enableMFA !== curValues.enableMFA}>
-          {({ getFieldValue }) =>
-            getFieldValue("enableMFA") ? (
+        {/* MFA Section */}
+        <div style={{ marginBottom: "16px" }}>
+          <Checkbox
+            onChange={(e) => {
+              console.log("MFA checkbox changed:", e.target.checked);
+              form.setFieldValue("enableMFA", e.target.checked);
+            }}
+            checked={form.getFieldValue("enableMFA")}
+          >
+            Enable Multi-Factor Authentication (MFA)
+          </Checkbox>
+        </div>
+        {form.getFieldValue("enableMFA") && (
+          <>
+            <Form.Item
+              label="Select MFA Methods"
+              name="mfaType"
+              rules={[
+                { required: true, message: "Please select at least one MFA method" },
+              ]}
+            >
+              <Checkbox.Group
+                options={(mfaTypes || []).map((type: string) => ({
+                  label: type,
+                  value: type,
+                }))}
+                onChange={(vals) => {
+                  console.log("MFA Types selected:", vals);
+                  form.setFieldValue("mfaType", vals);
+                }}
+              />
+            </Form.Item>
+            {((form.getFieldValue("mfaType") || []) as string[]).includes("SMS") && (
               <Form.Item
-                name="mfaType"
-                label="MFA Type(s)"
-                rules={[{ required: true, message: "Please select at least one MFA type" }]}
+                label="Phone Number"
+                name="phoneNumber"
+                rules={[{ required: true, message: "Please enter your phone number" }]}
               >
-                <Checkbox.Group options={mfaTypes.map((mfa) => ({ label: mfa, value: mfa }))} />
+                <Input placeholder="Enter your phone number" />
               </Form.Item>
-            ) : null
-          }
-        </Form.Item>
-
+            )}
+            {((form.getFieldValue("mfaType") || []) as string[]).includes("TOTP") && (
+              <div style={{ marginTop: "16px", textAlign: "center", marginBottom: "24px" }}>
+                <Button type="primary" onClick={() => console.log("Generate QR Code clicked")}>
+                  Generate QR Code
+                </Button>
+                {/* Optionally render a QR code */}
+              </div>
+            )}
+            {((form.getFieldValue("mfaType") || []) as string[]).includes("EMAIL") && (
+              <Form.Item
+                label="MFA Email"
+                name="mfaEmail"
+                rules={[
+                  { required: true, message: "Please enter your MFA email" },
+                  { type: "email", message: "Please enter a valid email" },
+                ]}
+              >
+                <Input placeholder="Enter MFA Email" />
+              </Form.Item>
+            )}
+          </>
+        )}
+        {/* Debug: Display raw MFA data from API */}
+        {mfaTypes.length > 0 && (
+          <div style={{ marginTop: 16, background: "#f0f0f0", padding: 8 }}>
+            <Text strong>Raw MFA Data:</Text>
+            <pre>{JSON.stringify({ mfaTypes }, null, 2)}</pre>
+          </div>
+        )}
         {/* Compact Contact Information */}
         <Form.Item label="Contact Information">
           <Form.Item
@@ -212,9 +269,7 @@ export default function UpdateTenantModal(props: UpdateTenantModalProps) {
                 <Input />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              {renderStateField(contactCountry || "", "contactState")}
-            </Col>
+            <Col span={12}>{renderStateField(form.getFieldValue("contactCountry") || "", "contactState")}</Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
@@ -246,7 +301,6 @@ export default function UpdateTenantModal(props: UpdateTenantModalProps) {
             <Input />
           </Form.Item>
         </Form.Item>
-
         {/* Compact Billing Information */}
         <Form.Item label="Billing Information">
           <Form.Item
@@ -262,9 +316,7 @@ export default function UpdateTenantModal(props: UpdateTenantModalProps) {
                 <Input />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              {renderStateField(billingCountry || "", "billingState")}
-            </Col>
+            <Col span={12}>{renderStateField(form.getFieldValue("billingCountry") || "", "billingState")}</Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
