@@ -107,14 +107,16 @@ const CAProvinces = [
   { code: "YT", name: "Yukon" },
 ];
 
-// Helper: renders a state/province select/input field.
+// Helper to render a state/province select/input field.
 const renderStateField = (country: string, fieldName: string, required: boolean = true) => {
   if (country === "CA") {
     return (
       <Form.Item label="State/Province" name={fieldName} rules={required ? [{ required: true, message: "Select a province" }] : []}>
         <Select placeholder="Select province">
           {CAProvinces.map((prov) => (
-            <Option key={prov.code} value={prov.name}>{prov.name}</Option>
+            <Option key={prov.code} value={prov.name}>
+              {prov.name}
+            </Option>
           ))}
         </Select>
       </Form.Item>
@@ -124,7 +126,9 @@ const renderStateField = (country: string, fieldName: string, required: boolean 
       <Form.Item label="State/Province" name={fieldName} rules={required ? [{ required: true, message: "Select a state" }] : []}>
         <Select placeholder="Select state">
           {USStates.map((state) => (
-            <Option key={state.code} value={state.name}>{state.name}</Option>
+            <Option key={state.code} value={state.name}>
+              {state.name}
+            </Option>
           ))}
         </Select>
       </Form.Item>
@@ -156,20 +160,23 @@ export default function UpdateTenantModal(props: UpdateTenantModalProps) {
   const [mfaEnabled, setMfaEnabled] = React.useState<boolean>(false);
   const [selectedMfaMethods, setSelectedMfaMethods] = React.useState<string[]>([]);
 
-  // Local state for logo file list (for preview).
+  // Local state for the logo file list (for preview).
   const [logoFileList, setLogoFileList] = React.useState<any[]>([]);
 
-  // Helper function to populate the form using the provided tenant data.
+  // populateForm extracts and sets form fields from tenant data.
   const populateForm = (tData: any) => {
+    console.log("Populating form with tenant data", tData);
     if (tData) {
-      console.log("Populating form with tenant data", tData);
-      // Extract addresses, if they exist.
+      // Check if addresses exist; if not, warn.
+      if (!tData.addresses) {
+        console.warn("tenant.addresses is missing. Ensure that the API returns addresses.");
+      }
       const mailingAddress = tData.addresses?.find((addr: any) => addr.addressType === "mailing") || {};
       const billingAddress = tData.addresses?.find((addr: any) => addr.addressType === "billing") || {};
 
       form.setFieldsValue({
         name: tData.name,
-        corporateWebsite: tData.companyWebsite, // Form field mapped to companyWebsite
+        corporateWebsite: tData.companyWebsite,
         contactStreet: mailingAddress.street || tData.contactStreet,
         contactCity: mailingAddress.city || tData.contactCity,
         contactState: mailingAddress.state || tData.contactState,
@@ -186,21 +193,18 @@ export default function UpdateTenantModal(props: UpdateTenantModalProps) {
       setMfaEnabled(tData.mfaEnabled === true);
       setSelectedMfaMethods(tData.allowedMfa || []);
 
-      // Process logo URL for preview.
       if (tData.logoUrl) {
         const logoUrl = tData.logoUrl.startsWith("http")
           ? tData.logoUrl
           : `${process.env.NEXT_PUBLIC_API_URL.replace("/api", "")}${tData.logoUrl}`;
-        setLogoFileList([
-          { uid: "-1", name: "logo.png", status: "done", url: logoUrl },
-        ]);
+        setLogoFileList([{ uid: "-1", name: "logo.png", status: "done", url: logoUrl }]);
       } else {
         setLogoFileList([]);
       }
     }
   };
 
-  // Reset and populate form every time the modal becomes visible.
+  // Reset and re-populate the form every time the modal becomes visible.
   useEffect(() => {
     if (visible) {
       form.resetFields();
@@ -219,7 +223,7 @@ export default function UpdateTenantModal(props: UpdateTenantModalProps) {
     }
   }, [visible, tenant, refreshTenant, form]);
 
-  // Update handler.
+  // Update handler
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
@@ -250,9 +254,11 @@ export default function UpdateTenantModal(props: UpdateTenantModalProps) {
         throw new Error("Failed to update tenant");
       }
 
-      // Determine if mailing and billing addresses already exist.
-      const mailingAddr = tenant.addresses?.find((addr: any) => addr.addressType === "mailing") || null;
-      const billingAddr = tenant.addresses?.find((addr: any) => addr.addressType === "billing") || null;
+      // Check if mailing and billing addresses exist.
+      const mailingAddr =
+        tenant.addresses?.find((addr: any) => addr.addressType === "mailing") || null;
+      const billingAddr =
+        tenant.addresses?.find((addr: any) => addr.addressType === "billing") || null;
 
       const mailingAddress = {
         tenantId: tenant.id,
@@ -276,7 +282,7 @@ export default function UpdateTenantModal(props: UpdateTenantModalProps) {
         phone: mergedValues.billingPhone,
       };
 
-      // Process mailing address.
+      // Process mailing address update: PUT if exists, else POST.
       let mailingRes;
       if (mailingAddr && mailingAddr.id) {
         mailingRes = await fetch(
@@ -301,7 +307,7 @@ export default function UpdateTenantModal(props: UpdateTenantModalProps) {
         throw new Error("Failed to update mailing address");
       }
 
-      // Process billing address.
+      // Process billing address update: PUT if exists, else POST.
       let billingRes;
       if (billingAddr && billingAddr.id) {
         billingRes = await fetch(
@@ -334,7 +340,7 @@ export default function UpdateTenantModal(props: UpdateTenantModalProps) {
     }
   };
 
-  // Copy contact information to billing.
+  // Copies contact fields to billing.
   const handleCopyContactToBilling = () => {
     const values = form.getFieldsValue([
       "contactStreet",
