@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect } from "react";
 import {
   Layout,
@@ -132,6 +131,14 @@ export default function Dashboard() {
   const [mfaTypes, setMfaTypes] = useState<string[]>([]);
   const [mfaRawData, setMfaRawData] = useState<any>(null);
 
+  // Logout handler – centralized for consistency
+  const handleLogout = () => {
+    localStorage.removeItem("userId");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    router.push("/login");
+  };
+
   const menuItems = [
     { key: "dashboard", label: <Link href="/dashboard">Dashboard</Link> },
     { key: "employees", label: <Link href="/dashboard/employees">Employees</Link> },
@@ -142,20 +149,12 @@ export default function Dashboard() {
     { key: "timesheet", label: <Link href="/dashboard/timesheet">Timesheet</Link> },
     { key: "settings", label: <Link href="/dashboard/settings">Settings</Link> },
   ];
-
   const userMenuItems = [
     { key: "profile", label: <Link href="/dashboard/profile">Profile</Link> },
     {
       key: "logout",
       label: (
-        <span
-          onClick={() => {
-            localStorage.removeItem("userId");
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
-            router.push("/login");
-          }}
-        >
+        <span onClick={handleLogout}>
           Logout
         </span>
       ),
@@ -174,7 +173,7 @@ export default function Dashboard() {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     })
       .then((res) => {
@@ -224,9 +223,7 @@ export default function Dashboard() {
     if (tenantEditModalVisible) {
       const fetchMfaTypes = async () => {
         try {
-          const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/auth/get-mfa-types`
-          );
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/get-mfa-types`);
           if (!response.ok) {
             throw new Error("Failed to fetch MFA types.");
           }
@@ -243,6 +240,7 @@ export default function Dashboard() {
         }
       };
       fetchMfaTypes();
+    }
   }, [tenantEditModalVisible]);
 
   useEffect(() => {
@@ -260,10 +258,9 @@ export default function Dashboard() {
     setOnboardingModalVisible(false);
   };
 
+  // Simplify displayRole using optional chaining:
   const displayRole =
-    user && user.role && typeof user.role === "object"
-      ? user.role.name || "N/A"
-      : user?.role || "N/A";
+    typeof user?.role === "object" ? user.role.name || "N/A" : user?.role || "N/A";
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -329,18 +326,18 @@ export default function Dashboard() {
               <Text>Loading user info...</Text>
             </Card>
           )}
-
           <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
             {stats.map((item, index) => (
               <Col xs={24} md={6} key={index}>
                 <Card>
                   <Title level={4}>{item.title}</Title>
-                  <Text strong style={{ fontSize: "24px" }}>{item.value}</Text>
+                  <Text strong style={{ fontSize: "24px" }}>
+                    {item.value}
+                  </Text>
                 </Card>
               </Col>
             ))}
           </Row>
-
           <Row gutter={[32, 32]} style={{ marginBottom: "40px" }}>
             <Col xs={24} md={12}>
               <Card title="Employee Trends" style={{ minHeight: "260px" }}>
@@ -355,7 +352,6 @@ export default function Dashboard() {
               </Card>
             </Col>
           </Row>
-
           <Row gutter={[32, 32]} style={{ marginBottom: "40px" }}>
             <Col xs={24}>
               <Card title="Employee Matrix">
@@ -363,7 +359,6 @@ export default function Dashboard() {
               </Card>
             </Col>
           </Row>
-
           <Row gutter={[16, 16]}>
             <Col xs={24} md={12}>
               <Card title="Team Chat" style={{ marginBottom: "24px" }}>
@@ -390,18 +385,20 @@ export default function Dashboard() {
           </Row>
         </div>
       </Content>
-
       <Footer style={{ textAlign: "center", padding: "20px", background: "#fff", borderTop: "1px solid #e8e8e8" }}>
         Enterprise HRMS ©2025 | All Rights Reserved.
       </Footer>
-
       <Modal
         title="Start Onboarding Process"
         open={onboardingModalVisible}
         onCancel={handleOnboardingModalCancel}
         footer={[
-          <Button key="cancel" onClick={handleOnboardingModalCancel}>Cancel</Button>,
-          <Button key="proceed" type="primary" onClick={handleOnboardingModalOk}>Proceed</Button>,
+          <Button key="cancel" onClick={handleOnboardingModalCancel}>
+            Cancel
+          </Button>,
+          <Button key="proceed" type="primary" onClick={handleOnboardingModalOk}>
+            Proceed
+          </Button>,
         ]}
         centered
         forceRender
@@ -413,7 +410,6 @@ export default function Dashboard() {
           <li>Completing mandatory training modules</li>
         </ul>
       </Modal>
-
       <UpdateTenantModal
         visible={tenantEditModalVisible}
         tenant={tenant}
@@ -428,8 +424,7 @@ export default function Dashboard() {
             body: JSON.stringify(values),
           })
             .then((res) => {
-              if (!res.ok)
-                throw new Error(`Failed to update tenant info: ${res.status}`);
+              if (!res.ok) throw new Error(`Failed to update tenant info: ${res.status}`);
               return res.json();
             })
             .then((data) => {
