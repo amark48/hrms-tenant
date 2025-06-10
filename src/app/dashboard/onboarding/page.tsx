@@ -15,11 +15,14 @@ import {
   Checkbox,
 } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
-// Import DashboardHeader from the correct relative path
-import DashboardHeader from "../DashboardHeader/page";
+import DashboardHeader from "../DashboardHeader/page"; // Updated header import
 
 const { Content, Footer } = Layout;
 const { Step } = Steps;
+
+/* ------------------------
+   CONSTANTS & STYLES
+------------------------- */
 
 // Container styles
 const containerStyle = {
@@ -107,6 +110,23 @@ const CANADIAN_PROVINCES_OPTIONS = [
   { label: "Yukon", value: "YT" },
 ];
 
+// Payment and Credit Card options
+const PAYMENT_METHOD_OPTIONS = [
+  { label: "Credit Card", value: "credit_card" },
+  { label: "Bank Transfer/ACH", value: "bank_transfer" },
+  { label: "PayPal", value: "paypal" },
+];
+
+const CREDIT_CARD_TYPE_OPTIONS = [
+  { label: "Visa", value: "visa" },
+  { label: "MasterCard", value: "mastercard" },
+  { label: "American Express", value: "amex" },
+];
+
+/* ------------------------
+   INTERFACES
+------------------------- */
+
 export interface CompanyInfo {
   companyName?: string;
   address?: string;
@@ -114,6 +134,29 @@ export interface CompanyInfo {
   state?: string;
   zip?: string;
   country?: string;
+  // Billing Information:
+  billingAddress?: string;
+  billingCity?: string;
+  billingState?: string;
+  billingZip?: string;
+  billingCountry?: string;
+  // Payment Options:
+  paymentMethod?: string;
+  // Credit Card Details:
+  cardType?: string;
+  cardNumber?: string;
+  cardExpiry?: string;
+  cardCVV?: string;
+  saveCardInfo?: boolean;
+  // Bank Transfer/ACH Details:
+  bankAccountNumber?: string;
+  bankRoutingNumber?: string;
+  authorizeBankTransfer?: boolean;
+  // PayPal:
+  paypalLinked?: boolean;
+  // Authentication:
+  mfaEnabled?: boolean;
+  allowedMfa?: string[];
 }
 
 let initialCompanyInfo: CompanyInfo = {};
@@ -124,8 +167,14 @@ export interface Tenant {
   country: string;
   addresses?: any;
   logoUrl?: string;
+  mfaEnabled?: boolean;
+  allowedMfa?: string[];
   [key: string]: any;
 }
+
+/* ------------------------
+   STEP COMPONENTS
+------------------------- */
 
 //
 // Step 1: Welcome
@@ -142,13 +191,9 @@ const WelcomeStep = () => (
 //
 // Step 2: Company Information
 //
-type CompanyInformationFormProps = {
-  form: any;
-};
+type CompanyInformationFormProps = { form: any };
 
-const CompanyInformationForm: React.FC<CompanyInformationFormProps> = ({
-  form,
-}) => {
+const CompanyInformationForm: React.FC<CompanyInformationFormProps> = ({ form }) => {
   const selectedCountry = Form.useWatch("country", form);
   return (
     <Form layout="vertical" form={form} name="companyInfoForm">
@@ -178,7 +223,8 @@ const CompanyInformationForm: React.FC<CompanyInformationFormProps> = ({
         name="country"
         rules={[{ required: true, message: "Country is required" }]}
       >
-        <Input disabled placeholder="Country" />
+        {/* Use readOnly so its value is part of the form data */}
+        <Input readOnly placeholder="Country" />
       </Form.Item>
       {selectedCountry === "United States" ? (
         <Form.Item
@@ -194,10 +240,7 @@ const CompanyInformationForm: React.FC<CompanyInformationFormProps> = ({
           name="state"
           rules={[{ required: true, message: "Please select your province" }]}
         >
-          <Select
-            placeholder="Select province"
-            options={CANADIAN_PROVINCES_OPTIONS}
-          />
+          <Select placeholder="Select province" options={CANADIAN_PROVINCES_OPTIONS} />
         </Form.Item>
       ) : (
         <Form.Item
@@ -215,8 +258,7 @@ const CompanyInformationForm: React.FC<CompanyInformationFormProps> = ({
           { required: true, message: "Please enter your zip/postal code" },
           {
             pattern: /^\d{5}(-\d{4})?$/,
-            message:
-              "Please enter a valid zip code (e.g., 12345 or 12345-6789)",
+            message: "Please enter a valid zip code (e.g., 12345 or 12345-6789)",
           },
         ]}
       >
@@ -229,9 +271,7 @@ const CompanyInformationForm: React.FC<CompanyInformationFormProps> = ({
 //
 // Step 3: Company Logo – Display preview from tenant info if available
 //
-type CompanyLogoStepProps = {
-  tenant: Tenant | null;
-};
+type CompanyLogoStepProps = { tenant: Tenant | null };
 
 const CompanyLogoStep: React.FC<CompanyLogoStepProps> = ({ tenant }) => {
   const [fileList, setFileList] = useState<any[]>([]);
@@ -266,13 +306,9 @@ const CompanyLogoStep: React.FC<CompanyLogoStepProps> = ({ tenant }) => {
 };
 
 //
-// Step 4: Subscription – Fetch subscriptions and show extra details
+// Step 4: Subscription – Fetch from /subscriptions and show extra details
 //
-type SubscriptionOption = {
-  id: string;
-  name: string;
-  description?: string;
-};
+type SubscriptionOption = { id: string; name: string; description?: string };
 
 const SubscriptionStep: React.FC = () => {
   const [subscriptions, setSubscriptions] = useState<SubscriptionOption[]>([]);
@@ -284,20 +320,14 @@ const SubscriptionStep: React.FC = () => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     fetch(`${apiUrl}/subscriptions`)
       .then((res) => res.json())
-      .then((data) => {
-        setSubscriptions(data);
-      })
+      .then((data) => setSubscriptions(data))
       .catch((err) => {
         console.error("Error fetching subscriptions", err);
       })
-      .finally(() => {
-        setLoading(false);
-      });
+      .finally(() => setLoading(false));
   }, []);
 
-  if (loading) {
-    return <Spin size="large" />;
-  }
+  if (loading) return <Spin size="large" />;
 
   return (
     <div>
@@ -315,8 +345,7 @@ const SubscriptionStep: React.FC = () => {
               value: sub.id,
             }))}
             onChange={(value) => {
-              const sub =
-                subscriptions.find((s) => s.id === value) || null;
+              const sub = subscriptions.find((s) => s.id === value) || null;
               setSelectedSubscription(sub);
             }}
           />
@@ -330,8 +359,7 @@ const SubscriptionStep: React.FC = () => {
           </p>
           <p>
             <strong>Description:</strong>{" "}
-            {selectedSubscription.description ||
-              "No description available."}
+            {selectedSubscription.description || "No description available."}
           </p>
         </div>
       )}
@@ -342,21 +370,32 @@ const SubscriptionStep: React.FC = () => {
 //
 // Step 5: Authentication Setup – Enable MFA and select allowed MFA types via checkboxes
 //
-const AuthenticationSetupStep: React.FC = () => {
-  const [form] = Form.useForm();
+type AuthenticationSetupStepProps = {
+  initialMfaEnabled?: boolean;
+  initialAllowedMfa?: string[];
+};
+
+const AuthenticationSetupStep: React.FC<AuthenticationSetupStepProps> = ({
+  initialMfaEnabled = false,
+  initialAllowedMfa = [],
+}) => {
+  const [mfaEnabled, setMfaEnabled] = useState(initialMfaEnabled);
   const [mfaTypes, setMfaTypes] = useState<{ id: string; name: string }[]>([]);
   const [loadingMfa, setLoadingMfa] = useState(true);
+  const [selectedMfaMethods, setSelectedMfaMethods] = useState<string[]>(initialAllowedMfa);
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     fetch(`${apiUrl}/auth/get-mfa-types`)
       .then((res) => res.json())
       .then((data) => {
-        // Map through each MFA type, safely reading mfa.dataValues?.name.
+        console.debug("Raw MFA types data:", data);
+        // Map over items—if the item is a string, convert it; else pick mfa.dataValues.name or mfa.name.
         const validMfaTypes = Array.isArray(data)
           ? data
               .map((mfa: any) => {
-                const mfaName = mfa.dataValues?.name;
+                if (typeof mfa === "string") return { id: mfa, name: mfa };
+                const mfaName = mfa.dataValues?.name || mfa.name;
                 if (!mfaName) return null;
                 return { id: mfaName, name: mfaName };
               })
@@ -368,69 +407,201 @@ const AuthenticationSetupStep: React.FC = () => {
       .catch((err) => {
         console.error("Error fetching MFA types", err);
       })
-      .finally(() => {
-        setLoadingMfa(false);
-      });
+      .finally(() => setLoadingMfa(false));
   }, []);
 
-  // Use useWatch to monitor the "mfaEnabled" state in this form.
-  const mfaEnabled = Form.useWatch("mfaEnabled", form);
-
   return (
-    <Form
-      layout="vertical"
-      name="authSetupForm"
-      form={form}
-      initialValues={{ mfaEnabled: false }}
-    >
-      <Form.Item
-        label="Enable Multi-Factor Authentication"
-        name="mfaEnabled"
-        valuePropName="checked"
-      >
-        <Switch />
-      </Form.Item>
-      {mfaEnabled && (
-        loadingMfa ? (
+    <div>
+      <div style={{ marginBottom: 16 }}>
+        <Checkbox
+          checked={mfaEnabled}
+          onChange={(e) => {
+            const checked = e.target.checked;
+            setMfaEnabled(checked);
+            if (!checked) setSelectedMfaMethods([]);
+          }}
+        >
+          Enable Multi-Factor Authentication
+        </Checkbox>
+      </div>
+      {mfaEnabled &&
+        (loadingMfa ? (
           <Spin size="large" />
-        ) : (
+        ) : mfaTypes && mfaTypes.length > 0 ? (
           <Form.Item
-            label="Allowed MFA Types"
-            name="allowedMfa"
-            rules={[
-              {
-                required: true,
-                message: "Please select one or more MFA types",
-              },
-            ]}
+            label="Select MFA Methods"
+            rules={[{ required: true, message: "Please select at least one MFA method" }]}
           >
             <Checkbox.Group
-              options={mfaTypes.map((mfa) => ({
-                label: mfa.name,
-                value: mfa.id,
+              options={mfaTypes.map((type) => ({
+                label: type.name,
+                value: type.id,
               }))}
+              value={selectedMfaMethods}
+              onChange={(values) => {
+                setSelectedMfaMethods(values as string[]);
+              }}
             />
           </Form.Item>
-        )
-      )}
-    </Form>
+        ) : (
+          <div style={{ color: "orange" }}>
+            No MFA methods available. Please check your dashboard fetch.
+          </div>
+        ))}
+    </div>
   );
 };
 
 //
-// Step 6: Billing Information
+// Step 6: Billing Information – Expanded with Payment Options & Billing Address
 //
-const BillingStep = () => (
-  <div>
-    <h3>Billing Information</h3>
-    <p>
-      Enter your billing details such as billing address, payment method, etc.
-    </p>
-  </div>
-);
+type BillingStepProps = { form: any };
+
+const BillingStep: React.FC<BillingStepProps> = ({ form }) => {
+  return (
+    <div>
+      <h3>Payment Option / Type</h3>
+      <Form layout="vertical" form={form} name="billingForm">
+        {/* Payment Method Section */}
+        <Form.Item
+          label="Payment Method"
+          name="paymentMethod"
+          rules={[{ required: true, message: "Please select a payment method" }]}
+        >
+          <Select
+            placeholder="Select a payment method"
+            options={PAYMENT_METHOD_OPTIONS}
+          />
+        </Form.Item>
+        <Form.Item shouldUpdate={(prev, curr) => prev.paymentMethod !== curr.paymentMethod}>
+          {({ getFieldValue }) => {
+            const paymentMethod = getFieldValue("paymentMethod");
+            if (paymentMethod === "credit_card") {
+              return (
+                <div style={{ padding: "8px", border: "1px solid #f0f0f0", marginBottom: "16px" }}>
+                  <h4>Credit Card Details</h4>
+                  <Form.Item
+                    label="Card Type"
+                    name="cardType"
+                    rules={[{ required: true, message: "Please select your card type" }]}
+                  >
+                    <Select
+                      placeholder="Select card type"
+                      options={CREDIT_CARD_TYPE_OPTIONS}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    label="Card Number"
+                    name="cardNumber"
+                    rules={[{ required: true, message: "Please enter your card number" }]}
+                  >
+                    <Input placeholder="Enter card number" />
+                  </Form.Item>
+                  <Form.Item
+                    label="Expiry Date"
+                    name="cardExpiry"
+                    rules={[{ required: true, message: "Please enter card expiry date" }]}
+                  >
+                    <Input placeholder="MM/YY" />
+                  </Form.Item>
+                  <Form.Item
+                    label="CVV"
+                    name="cardCVV"
+                    rules={[{ required: true, message: "Please enter your card CVV" }]}
+                  >
+                    <Input placeholder="Enter CVV" />
+                  </Form.Item>
+                  <Form.Item name="saveCardInfo" valuePropName="checked">
+                    <Checkbox>Save card information</Checkbox>
+                  </Form.Item>
+                </div>
+              );
+            } else if (paymentMethod === "bank_transfer") {
+              return (
+                <div style={{ padding: "8px", border: "1px solid #f0f0f0", marginBottom: "16px" }}>
+                  <h4>Bank Transfer / ACH Details</h4>
+                  <Form.Item
+                    label="Bank Account Number"
+                    name="bankAccountNumber"
+                    rules={[{ required: true, message: "Please enter your bank account number" }]}
+                  >
+                    <Input placeholder="Enter bank account number" />
+                  </Form.Item>
+                  <Form.Item
+                    label="Bank Routing Number"
+                    name="bankRoutingNumber"
+                    rules={[{ required: true, message: "Please enter your bank routing number" }]}
+                  >
+                    <Input placeholder="Enter bank routing number" />
+                  </Form.Item>
+                  <Form.Item name="authorizeBankTransfer" valuePropName="checked">
+                    <Checkbox>Authorize us to initiate the fund request</Checkbox>
+                  </Form.Item>
+                </div>
+              );
+            } else if (paymentMethod === "paypal") {
+              return (
+                <div style={{ padding: "8px", border: "1px solid #f0f0f0", marginBottom: "16px" }}>
+                  <h4>PayPal</h4>
+                  <p>You will be redirected to PayPal to link your account.</p>
+                  <Button type="primary">Link PayPal Account</Button>
+                </div>
+              );
+            }
+            return null;
+          }}
+        </Form.Item>
+        {/* Billing Address Section */}
+        <h3>Billing Address</h3>
+        <Form.Item
+          label="Billing Street Address"
+          name="billingAddress"
+          rules={[{ required: true, message: "Please enter your billing street address" }]}
+        >
+          <Input placeholder="Enter billing street address" />
+        </Form.Item>
+        <div style={{ display: "flex", gap: "16px" }}>
+          <Form.Item
+            label="Billing City"
+            name="billingCity"
+            rules={[{ required: true, message: "Please enter your billing city" }]}
+            style={{ flex: 1 }}
+          >
+            <Input placeholder="Enter billing city" />
+          </Form.Item>
+          <Form.Item
+            label="Billing State/Province"
+            name="billingState"
+            rules={[{ required: true, message: "Please enter your billing state or province" }]}
+            style={{ flex: 1 }}
+          >
+            <Input placeholder="Enter billing state or province" />
+          </Form.Item>
+        </div>
+        <Form.Item
+          label="Billing Zip/Postal Code"
+          name="billingZip"
+          rules={[
+            { required: true, message: "Please enter your billing zip/postal code" },
+            { pattern: /^\d{5}(-\d{4})?$/, message: "Please enter a valid billing zip code" },
+          ]}
+        >
+          <Input placeholder="Enter billing zip/postal code" />
+        </Form.Item>
+        <Form.Item
+          label="Billing Country"
+          name="billingCountry"
+          rules={[{ required: true, message: "Billing country is required" }]}
+        >
+          <Input placeholder="Enter billing country" />
+        </Form.Item>
+      </Form>
+    </div>
+  );
+};
 
 //
-// Step 7: Review & Finish
+// Step 7: Review & Finish – Display all gathered information
 //
 type ReviewStepProps = { companyInfo: CompanyInfo };
 
@@ -460,13 +631,59 @@ const ReviewStep: React.FC<ReviewStepProps> = ({ companyInfo }) => (
       <li>
         <strong>Country:</strong> {companyInfo.country || "N/A"}
       </li>
+      <li>
+        <strong>Payment Method:</strong> {companyInfo.paymentMethod || "N/A"}
+      </li>
+      {companyInfo.paymentMethod === "credit_card" && (
+        <>
+          <li>
+            <strong>Card Type:</strong> {companyInfo.cardType || "N/A"}
+          </li>
+          <li>
+            <strong>Card Number:</strong> {companyInfo.cardNumber || "N/A"}
+          </li>
+          <li>
+            <strong>Expiry Date:</strong> {companyInfo.cardExpiry || "N/A"}
+          </li>
+          <li>
+            <strong>Save Card Information:</strong>{" "}
+            {companyInfo.saveCardInfo ? "Yes" : "No"}
+          </li>
+        </>
+      )}
+      {companyInfo.paymentMethod === "bank_transfer" && (
+        <>
+          <li>
+            <strong>Bank Account Number:</strong> {companyInfo.bankAccountNumber || "N/A"}
+          </li>
+          <li>
+            <strong>Bank Routing Number:</strong> {companyInfo.bankRoutingNumber || "N/A"}
+          </li>
+          <li>
+            <strong>Authorized Fund Request:</strong>{" "}
+            {companyInfo.authorizeBankTransfer ? "Yes" : "No"}
+          </li>
+        </>
+      )}
+      {companyInfo.paymentMethod === "paypal" && (
+        <li>
+          <strong>PayPal Account Linked:</strong> {companyInfo.paypalLinked ? "Yes" : "No"}
+        </li>
+      )}
+      <li>
+        <strong>Billing Address:</strong>{" "}
+        {companyInfo.billingAddress || "N/A"}, {companyInfo.billingCity || "N/A"},{" "}
+        {companyInfo.billingState || "N/A"}, {companyInfo.billingZip || "N/A"},{" "}
+        {companyInfo.billingCountry || "N/A"}
+      </li>
     </ul>
   </div>
 );
 
-//
-// Main OnboardingWizard Component
-//
+/* ------------------------
+   MAIN COMPONENT
+------------------------- */
+
 const OnboardingWizard = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>(initialCompanyInfo);
@@ -474,7 +691,7 @@ const OnboardingWizard = () => {
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [loadingTenant, setLoadingTenant] = useState(true);
 
-  // Fetch tenant info based on the logged-in user's tenantId.
+  // Fetch tenant info using tenantId from localStorage (simulate logged-in user)
   useEffect(() => {
     const userStr = localStorage.getItem("user");
     if (userStr) {
@@ -499,11 +716,12 @@ const OnboardingWizard = () => {
     }
   }, []);
 
-  // Merge saved progress with tenant info and pre-populate form values.
+  // Merge saved progress and tenant data into form values.
   useEffect(() => {
     const savedData = localStorage.getItem("onboardingProgress");
     let initialData: CompanyInfo = savedData ? JSON.parse(savedData) : {};
     if (tenant) {
+      // Company Information (mailing address)
       if (!initialData.companyName) {
         initialData.companyName = tenant.name;
       }
@@ -537,6 +755,42 @@ const OnboardingWizard = () => {
           initialData.country = mailingAddress.country;
         }
       }
+      // Billing Address from tenant (addressType "billing")
+      let billingAddress: any = null;
+      if (tenant.addresses) {
+        if (Array.isArray(tenant.addresses)) {
+          billingAddress = tenant.addresses.find(
+            (addr) => addr.addressType === "billing"
+          );
+        } else if (tenant.addresses.addressType === "billing") {
+          billingAddress = tenant.addresses;
+        }
+      }
+      if (billingAddress) {
+        if (!initialData.billingAddress) {
+          initialData.billingAddress = billingAddress.street;
+        }
+        if (!initialData.billingCity) {
+          initialData.billingCity = billingAddress.city;
+        }
+        if (!initialData.billingState) {
+          initialData.billingState = billingAddress.state;
+        }
+        if (!initialData.billingZip) {
+          initialData.billingZip = billingAddress.postalCode;
+        }
+        if (!initialData.billingCountry) {
+          initialData.billingCountry = billingAddress.country;
+        }
+      }
+      // Merge MFA settings if available
+      if (tenant.mfaEnabled !== undefined) {
+        initialData.mfaEnabled = tenant.mfaEnabled;
+      }
+      if (tenant.allowedMfa) {
+        initialData.allowedMfa = tenant.allowedMfa;
+      }
+      // Optionally, merge payment information if stored in the tenant.
     }
     setCompanyInfo(initialData);
     form.setFieldsValue(initialData);
@@ -544,7 +798,8 @@ const OnboardingWizard = () => {
 
   const saveProgress = async () => {
     try {
-      if (currentStep === 1) {
+      // Validate Company Information (Step 2) and Billing Information (Step 6)
+      if (currentStep === 1 || currentStep === 5) {
         await form.validateFields();
         const values = form.getFieldsValue();
         setCompanyInfo(values);
@@ -559,7 +814,7 @@ const OnboardingWizard = () => {
   };
 
   const next = async () => {
-    if (currentStep === 1) {
+    if (currentStep === 1 || currentStep === 5) {
       try {
         await form.validateFields();
         const values = form.getFieldsValue();
@@ -579,7 +834,7 @@ const OnboardingWizard = () => {
 
   const finishOnboarding = async () => {
     try {
-      if (currentStep === 1) {
+      if (currentStep === 1 || currentStep === 5) {
         await form.validateFields();
       }
       message.success("Onboarding process completed!");
@@ -589,13 +844,25 @@ const OnboardingWizard = () => {
     }
   };
 
+  // Extract MFA initial settings from tenant if available.
+  const initialMfaEnabled = tenant?.mfaEnabled ?? false;
+  const initialAllowedMfa = tenant?.allowedMfa ?? [];
+
   const steps = [
     { title: "Welcome", content: <WelcomeStep /> },
     { title: "Company Information", content: <CompanyInformationForm form={form} /> },
     { title: "Company Logo", content: <CompanyLogoStep tenant={tenant} /> },
     { title: "Subscription", content: <SubscriptionStep /> },
-    { title: "Authentication Setup", content: <AuthenticationSetupStep /> },
-    { title: "Billing Information", content: <BillingStep /> },
+    {
+      title: "Authentication Setup",
+      content: (
+        <AuthenticationSetupStep
+          initialMfaEnabled={initialMfaEnabled}
+          initialAllowedMfa={initialAllowedMfa}
+        />
+      ),
+    },
+    { title: "Billing Information", content: <BillingStep form={form} /> },
     { title: "Review \u0026 Finish", content: <ReviewStep companyInfo={companyInfo} /> },
   ];
 
@@ -618,7 +885,14 @@ const OnboardingWizard = () => {
         <Content style={{ padding: "40px 20px", marginTop: "64px", textAlign: "center" }}>
           <Spin size="large" />
         </Content>
-        <Footer style={{ textAlign: "center", padding: "20px", background: "#fff", borderTop: "1px solid #e8e8e8" }}>
+        <Footer
+          style={{
+            textAlign: "center",
+            padding: "20px",
+            background: "#fff",
+            borderTop: "1px solid #e8e8e8",
+          }}
+        >
           Enterprise HRMS ©2025 | All Rights Reserved.
         </Footer>
       </Layout>
