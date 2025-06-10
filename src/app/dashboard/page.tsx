@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState, useEffect } from "react";
 import {
   Layout,
@@ -52,7 +53,6 @@ const lineData = [
   { date: "2023-05", value: 130 },
   { date: "2023-06", value: 120 },
 ];
-
 const lineConfig = {
   height: 250,
   data: lineData,
@@ -70,7 +70,6 @@ const pieData = [
   { type: "Marketing", value: 15 },
   { type: "Support", value: 25 },
 ];
-
 const pieConfig = {
   height: 250,
   appendPadding: 10,
@@ -95,14 +94,16 @@ const departmentPerformanceData = [
   { department: "Marketing", performance: 80 },
   { department: "Support", performance: 60 },
 ];
-
 const columnConfig = {
   height: 250,
   data: departmentPerformanceData,
   xField: "department",
   yField: "performance",
   color: "#17a2b8",
-  label: { position: "middle", style: { fill: "#FFFFFF", opacity: 0.6 } },
+  label: {
+    position: "middle",
+    style: { fill: "#FFFFFF", opacity: 0.6 },
+  },
   xAxis: { label: { autoHide: true, autoRotate: false } },
   meta: { performance: { alias: "Performance (%)" } },
 };
@@ -113,13 +114,21 @@ const matrixColumns = [
   { title: "Avg Age", dataIndex: "avgAge", key: "avgAge" },
   { title: "Turnover Rate", dataIndex: "turnover", key: "turnover" },
 ];
-
 const matrixData = [
   { key: 1, department: "Engineering", employees: 40, avgAge: 30, turnover: "5%" },
   { key: 2, department: "Sales", employees: 20, avgAge: 35, turnover: "8%" },
   { key: 3, department: "Marketing", employees: 15, avgAge: 33, turnover: "6%" },
   { key: 4, department: "Support", employees: 25, avgAge: 28, turnover: "4%" },
 ];
+
+// Helper function: resolves the full logo URL from the backend.
+// (Defined only once.)
+function getTenantLogoUrl(logoUrl?: string) {
+  if (!logoUrl) return "";
+  return logoUrl.startsWith("http")
+    ? logoUrl
+    : `${process.env.NEXT_PUBLIC_API_URL.replace("/api", "")}${logoUrl}`;
+}
 
 export default function Dashboard() {
   const router = useRouter();
@@ -131,7 +140,7 @@ export default function Dashboard() {
   const [mfaTypes, setMfaTypes] = useState<string[]>([]);
   const [mfaRawData, setMfaRawData] = useState<any>(null);
 
-  // Logout handler – centralized for consistency
+  // Logout handler.
   const handleLogout = () => {
     localStorage.removeItem("userId");
     localStorage.removeItem("token");
@@ -151,14 +160,7 @@ export default function Dashboard() {
   ];
   const userMenuItems = [
     { key: "profile", label: <Link href="/dashboard/profile">Profile</Link> },
-    {
-      key: "logout",
-      label: (
-        <span onClick={handleLogout}>
-          Logout
-        </span>
-      ),
-    },
+    { key: "logout", label: <span onClick={handleLogout}>Logout</span> },
   ];
 
   useEffect(() => {
@@ -229,7 +231,6 @@ export default function Dashboard() {
           }
           const data = await response.json();
           if (Array.isArray(data)) {
-            // Filter out any null or empty values.
             setMfaTypes(data.filter((type) => type != null && type !== ""));
           } else {
             setMfaTypes([]);
@@ -258,7 +259,6 @@ export default function Dashboard() {
     setOnboardingModalVisible(false);
   };
 
-  // Simplify displayRole using optional chaining:
   const displayRole =
     typeof user?.role === "object" ? user.role.name || "N/A" : user?.role || "N/A";
 
@@ -292,9 +292,16 @@ export default function Dashboard() {
                       </Col>
                       <Col>
                         {tenant.logoUrl ? (
-                          <img src={tenant.logoUrl} alt="Tenant Logo" style={{ height: "50px" }} />
+                          <img
+                            src={getTenantLogoUrl(tenant.logoUrl)}
+                            alt="Tenant Logo"
+                            style={{ height: "50px" }}
+                          />
                         ) : (
-                          <Avatar style={{ background: "#ccc", verticalAlign: "middle" }} size={50}>
+                          <Avatar
+                            style={{ background: "#ccc", verticalAlign: "middle" }}
+                            size={50}
+                          >
                             {tenant.name.charAt(0).toUpperCase()}
                           </Avatar>
                         )}
@@ -302,7 +309,11 @@ export default function Dashboard() {
                       {user.isTenantAdmin && (
                         <Col>
                           <EditOutlined
-                            style={{ fontSize: "20px", cursor: "pointer", marginLeft: "8px" }}
+                            style={{
+                              fontSize: "20px",
+                              cursor: "pointer",
+                              marginLeft: "8px",
+                            }}
                             onClick={() => setTenantEditModalVisible(true)}
                           />
                         </Col>
@@ -326,6 +337,8 @@ export default function Dashboard() {
               <Text>Loading user info...</Text>
             </Card>
           )}
+
+          {/* Stats, Charts, Tables, Chat, etc. */}
           <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
             {stats.map((item, index) => (
               <Col xs={24} md={6} key={index}>
@@ -355,7 +368,12 @@ export default function Dashboard() {
           <Row gutter={[32, 32]} style={{ marginBottom: "40px" }}>
             <Col xs={24}>
               <Card title="Employee Matrix">
-                <Table columns={matrixColumns} dataSource={matrixData} pagination={false} bordered />
+                <Table
+                  columns={matrixColumns}
+                  dataSource={matrixData}
+                  pagination={false}
+                  bordered
+                />
               </Card>
             </Col>
           </Row>
@@ -378,16 +396,27 @@ export default function Dashboard() {
               </Card>
             </Col>
             <Col xs={24} md={12}>
-              <Card title="Department Performance" style={{ marginBottom: "24px", minHeight: "260px" }}>
+              <Card
+                title="Department Performance"
+                style={{ marginBottom: "24px", minHeight: "260px" }}
+              >
                 <Column {...columnConfig} />
               </Card>
             </Col>
           </Row>
         </div>
       </Content>
-      <Footer style={{ textAlign: "center", padding: "20px", background: "#fff", borderTop: "1px solid #e8e8e8" }}>
+      <Footer
+        style={{
+          textAlign: "center",
+          padding: "20px",
+          background: "#fff",
+          borderTop: "1px solid #e8e8e8",
+        }}
+      >
         Enterprise HRMS ©2025 | All Rights Reserved.
       </Footer>
+
       <Modal
         title="Start Onboarding Process"
         open={onboardingModalVisible}
@@ -410,6 +439,7 @@ export default function Dashboard() {
           <li>Completing mandatory training modules</li>
         </ul>
       </Modal>
+
       <UpdateTenantModal
         visible={tenantEditModalVisible}
         tenant={tenant}
