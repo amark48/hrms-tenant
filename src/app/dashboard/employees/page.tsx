@@ -20,7 +20,7 @@ import {
 } from "antd";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import DashboardHeader from "../DashboardHeader"; // Adjust path if needed
+import DashboardHeader from "../DashboardHeader/page"; // Adjust path if needed
 
 const { Content, Footer } = Layout;
 const { Title, Text } = Typography;
@@ -32,7 +32,7 @@ function getTenantLogoUrl(logoUrl?: string) {
   if (!logoUrl) return "";
   return logoUrl.startsWith("http")
     ? logoUrl
-    : `${process.env.NEXT_PUBLIC_API_URL.replace("/api", "")}${logoUrl}`;
+    : `${(process.env.NEXT_PUBLIC_API_URL ?? "").replace("/api", "")}${logoUrl}`;
 }
 
 // -------------------------

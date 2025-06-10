@@ -194,9 +194,10 @@ export default function UpdateTenantModal(props: UpdateTenantModalProps) {
       setSelectedMfaMethods(tData.allowedMfa || []);
 
       if (tData.logoUrl) {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
         const logoUrl = tData.logoUrl.startsWith("http")
           ? tData.logoUrl
-          : `${process.env.NEXT_PUBLIC_API_URL.replace("/api", "")}${tData.logoUrl}`;
+          : `${apiUrl.replace("/api", "")}${tData.logoUrl}`;
         setLogoFileList([{ uid: "-1", name: "logo.png", status: "done", url: logoUrl }]);
       } else {
         setLogoFileList([]);
@@ -392,7 +393,7 @@ export default function UpdateTenantModal(props: UpdateTenantModalProps) {
                       status: "done",
                       url: tenant.logoUrl.startsWith("http")
                         ? tenant.logoUrl
-                        : `${process.env.NEXT_PUBLIC_API_URL.replace("/api", "")}${tenant.logoUrl}`,
+                        : `${(process.env.NEXT_PUBLIC_API_URL || "").replace("/api", "")}${tenant.logoUrl}`,
                     },
                   ]
                 : []
@@ -401,8 +402,12 @@ export default function UpdateTenantModal(props: UpdateTenantModalProps) {
             onChange={({ fileList }) => setLogoFileList(fileList)}
             customRequest={async ({ file, onSuccess, onError }) => {
               try {
+                // Import RcFile type for proper typing
+                // eslint-disable-next-line @typescript-eslint/no-var-requires
+                const { RcFile } = require("antd/es/upload/interface");
+                const fileObj = file as import("antd/es/upload/interface").RcFile;
                 const formData = new FormData();
-                formData.append("logo", file);
+                formData.append("logo", fileObj);
                 const response = await fetch(
                   `${process.env.NEXT_PUBLIC_API_URL}/upload/${tenant.id}/logo`,
                   {
@@ -412,13 +417,13 @@ export default function UpdateTenantModal(props: UpdateTenantModalProps) {
                 );
                 if (response.ok) {
                   const data = await response.json();
-                  setLogoFileList([{ uid: "-1", name: file.name, status: "done", url: data.url || tenant.logoUrl }]);
-                  onSuccess && onSuccess(data, file);
+                  setLogoFileList([{ uid: "-1", name: fileObj.name, status: "done", url: data.url || tenant.logoUrl }]);
+                  onSuccess && onSuccess(data, fileObj);
                 } else {
                   onError && onError(new Error("Logo upload failed"));
                 }
               } catch (error) {
-                onError && onError(error);
+                onError && onError(error as Error);
               }
             }}
           >

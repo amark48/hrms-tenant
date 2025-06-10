@@ -19,18 +19,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { UserOutlined, EditOutlined } from "@ant-design/icons";
 import { Pie, Line, Column } from "@ant-design/plots";
-import DashboardHeader from "./DashboardHeader";
+import DashboardHeader from "./DashboardHeader/page";
 import UpdateTenantModal from "./UpdateTenantModal";
 
 const { Content, Footer } = Layout;
 const { Title, Text } = Typography;
 
-const containerStyle = {
-  maxWidth: "1200px",
-  margin: "0 auto",
-  width: "100%",
-  padding: "0 24px",
-};
+const containerStyle = { maxWidth: "1200px", margin: "0 auto", width: "100%", padding: "0 24px" };
 
 const stats = [
   { title: "Total Employees", value: 125 },
@@ -53,6 +48,7 @@ const lineData = [
   { date: "2023-05", value: 130 },
   { date: "2023-06", value: 120 },
 ];
+
 const lineConfig = {
   height: 250,
   data: lineData,
@@ -61,7 +57,13 @@ const lineConfig = {
   smooth: true,
   color: "#004e92",
   tooltip: { showMarkers: false },
-  animation: { appear: { animation: "path-in", duration: 500, easing: "easeLinear" } },
+  animation: {
+    appear: {
+      animation: "path-in",
+      duration: 500,
+      easing: "easeLinear",
+    },
+  },
 };
 
 const pieData = [
@@ -70,6 +72,7 @@ const pieData = [
   { type: "Marketing", value: 15 },
   { type: "Support", value: 25 },
 ];
+
 const pieConfig = {
   height: 250,
   appendPadding: 10,
@@ -94,6 +97,7 @@ const departmentPerformanceData = [
   { department: "Marketing", performance: 80 },
   { department: "Support", performance: 60 },
 ];
+
 const columnConfig = {
   height: 250,
   data: departmentPerformanceData,
@@ -114,6 +118,7 @@ const matrixColumns = [
   { title: "Avg Age", dataIndex: "avgAge", key: "avgAge" },
   { title: "Turnover Rate", dataIndex: "turnover", key: "turnover" },
 ];
+
 const matrixData = [
   { key: 1, department: "Engineering", employees: 40, avgAge: 30, turnover: "5%" },
   { key: 2, department: "Sales", employees: 20, avgAge: 35, turnover: "8%" },
@@ -122,12 +127,10 @@ const matrixData = [
 ];
 
 // Helper function: resolves the full logo URL from the backend.
-// (Defined only once.)
 function getTenantLogoUrl(logoUrl?: string) {
   if (!logoUrl) return "";
-  return logoUrl.startsWith("http")
-    ? logoUrl
-    : `${process.env.NEXT_PUBLIC_API_URL.replace("/api", "")}${logoUrl}`;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+  return logoUrl.startsWith("http") ? logoUrl : `${apiUrl.replace("/api", "")}${logoUrl}`;
 }
 
 export default function Dashboard() {
@@ -139,6 +142,14 @@ export default function Dashboard() {
   const [tenantLoading, setTenantLoading] = useState(false);
   const [mfaTypes, setMfaTypes] = useState<string[]>([]);
   const [mfaRawData, setMfaRawData] = useState<any>(null);
+
+  // ─────────── NEW: Dynamic state for charts ───────────
+  const [employeeTrendsData, setEmployeeTrendsData] = useState(lineData);
+  const [departmentPerformanceChartData, setDepartmentPerformanceChartData] = useState(departmentPerformanceData);
+
+  // Create dynamic chart configuration objects that use the fetched data
+  const dynamicLineConfig = { ...lineConfig, data: employeeTrendsData };
+  const dynamicColumnConfig = { ...columnConfig, data: departmentPerformanceChartData };
 
   // Logout handler.
   const handleLogout = () => {
@@ -158,11 +169,13 @@ export default function Dashboard() {
     { key: "timesheet", label: <Link href="/dashboard/timesheet">Timesheet</Link> },
     { key: "settings", label: <Link href="/dashboard/settings">Settings</Link> },
   ];
+
   const userMenuItems = [
     { key: "profile", label: <Link href="/dashboard/profile">Profile</Link> },
     { key: "logout", label: <span onClick={handleLogout}>Logout</span> },
   ];
 
+  // ─────────── Existing useEffect: Fetch user profile ───────────
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -198,6 +211,7 @@ export default function Dashboard() {
       });
   }, [router]);
 
+  // ─────────── Existing useEffect: Fetch tenant info ───────────
   useEffect(() => {
     if (user && user.tenantId) {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -221,6 +235,7 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  // ─────────── Existing useEffect: Fetch MFA types when tenant edit modal opens ───────────
   useEffect(() => {
     if (tenantEditModalVisible) {
       const fetchMfaTypes = async () => {
@@ -244,15 +259,50 @@ export default function Dashboard() {
     }
   }, [tenantEditModalVisible]);
 
+  // ─────────── Existing useEffect: Show onboarding modal if needed ───────────
   useEffect(() => {
     if (user && user.onboardingCompleted === false) {
       setOnboardingModalVisible(true);
     }
   }, [user]);
 
+  // ─────────── NEW: Fetch dynamic employee trends data ───────────
+  useEffect(() => {
+    (async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard/employee-trends`);
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data)) {
+            setEmployeeTrendsData(data);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching dynamic employee trends data", error);
+      }
+    })();
+  }, []);
+
+  // ─────────── NEW: Fetch dynamic department performance data ───────────
+  useEffect(() => {
+    (async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard/department-performance`);
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data)) {
+            setDepartmentPerformanceChartData(data);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching dynamic department performance data", error);
+      }
+    })();
+  }, []);
+
   const handleOnboardingModalOk = () => {
     setOnboardingModalVisible(false);
-    router.push("/onboarding");
+    router.push("/dashboard/onboarding");
   };
 
   const handleOnboardingModalCancel = () => {
@@ -298,10 +348,7 @@ export default function Dashboard() {
                             style={{ height: "50px" }}
                           />
                         ) : (
-                          <Avatar
-                            style={{ background: "#ccc", verticalAlign: "middle" }}
-                            size={50}
-                          >
+                          <Avatar style={{ background: "#ccc", verticalAlign: "middle" }} size={50}>
                             {tenant.name.charAt(0).toUpperCase()}
                           </Avatar>
                         )}
@@ -309,11 +356,7 @@ export default function Dashboard() {
                       {user.isTenantAdmin && (
                         <Col>
                           <EditOutlined
-                            style={{
-                              fontSize: "20px",
-                              cursor: "pointer",
-                              marginLeft: "8px",
-                            }}
+                            style={{ fontSize: "20px", cursor: "pointer", marginLeft: "8px" }}
                             onClick={() => setTenantEditModalVisible(true)}
                           />
                         </Col>
@@ -351,10 +394,12 @@ export default function Dashboard() {
               </Col>
             ))}
           </Row>
+
           <Row gutter={[32, 32]} style={{ marginBottom: "40px" }}>
             <Col xs={24} md={12}>
               <Card title="Employee Trends" style={{ minHeight: "260px" }}>
-                <Line {...lineConfig} />
+                {/* Use dynamicLineConfig so that updated data renders */}
+                <Line {...dynamicLineConfig} />
               </Card>
             </Col>
             <Col xs={24} md={12}>
@@ -365,15 +410,11 @@ export default function Dashboard() {
               </Card>
             </Col>
           </Row>
+
           <Row gutter={[32, 32]} style={{ marginBottom: "40px" }}>
             <Col xs={24}>
               <Card title="Employee Matrix">
-                <Table
-                  columns={matrixColumns}
-                  dataSource={matrixData}
-                  pagination={false}
-                  bordered
-                />
+                <Table columns={matrixColumns} dataSource={matrixData} pagination={false} bordered />
               </Card>
             </Col>
           </Row>
@@ -396,24 +437,15 @@ export default function Dashboard() {
               </Card>
             </Col>
             <Col xs={24} md={12}>
-              <Card
-                title="Department Performance"
-                style={{ marginBottom: "24px", minHeight: "260px" }}
-              >
-                <Column {...columnConfig} />
+              <Card title="Department Performance" style={{ marginBottom: "24px", minHeight: "260px" }}>
+                {/* Use dynamicColumnConfig so that the latest performance data is displayed */}
+                <Column {...dynamicColumnConfig} />
               </Card>
             </Col>
           </Row>
         </div>
       </Content>
-      <Footer
-        style={{
-          textAlign: "center",
-          padding: "20px",
-          background: "#fff",
-          borderTop: "1px solid #e8e8e8",
-        }}
-      >
+      <Footer style={{ textAlign: "center", padding: "20px", background: "#fff", borderTop: "1px solid #e8e8e8" }}>
         Enterprise HRMS ©2025 | All Rights Reserved.
       </Footer>
 
@@ -444,7 +476,6 @@ export default function Dashboard() {
         visible={tenantEditModalVisible}
         tenant={tenant}
         mfaTypes={mfaTypes}
-        mfaRawData={mfaRawData}
         onOk={(values) => {
           setTenantLoading(true);
           const apiUrl = process.env.NEXT_PUBLIC_API_URL;
