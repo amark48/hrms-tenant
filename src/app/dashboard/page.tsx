@@ -105,7 +105,7 @@ const columnConfig = {
   yField: "performance",
   color: "#17a2b8",
   label: {
-    position: "middle",
+    position: "center",
     style: { fill: "#FFFFFF", opacity: 0.6 },
   },
   xAxis: { label: { autoHide: true, autoRotate: false } },
