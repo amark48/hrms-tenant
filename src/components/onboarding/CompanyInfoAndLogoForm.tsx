@@ -1,3 +1,4 @@
+import '@ant-design/v5-patch-for-react-19';
 import React, { useEffect, useState } from "react";
 import { Form, Input, Select, Row, Col, Typography, Button, Upload, message } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
@@ -103,7 +104,6 @@ export interface CompanyInfoAndLogoFormProps {
     adminEmail?: string;
     subscriptionId?: string;
     industry?: string;
-    // Tenant now has an addresses array containing mailing info.
     addresses?: Array<{
       addressType?: string;
       street?: string;
@@ -113,68 +113,77 @@ export interface CompanyInfoAndLogoFormProps {
       country?: string;
       phone?: string;
     }>;
-    // Fallback if addresses is not provided.
     street?: string;
     address?: string;
     city?: string;
     state?: string;
     zip?: string;
     country?: string;
-    // Website field mapping to companyWebsite.
     companyWebsite?: string;
-    // Contact Phone field mapping.
     phone?: string;
-    // Existing logo provided by the backend – as a relative URL (e.g. "/api/images/logo.png")
+    // Existing logo provided by the backend (absolute URL is expected)
     logoUrl?: string;
   };
   onLogoChange?: (file: File) => void;
 }
 
 const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({ form, tenant, onLogoChange }) => {
+  // Debug log the raw tenant.logoUrl.
+  useEffect(() => {
+    console.log("DEBUG - Tenant logoUrl (raw):", tenant?.logoUrl);
+  }, [tenant]);
+
+  // Helper to compute the full logo URL.
+  // If tenant.logoUrl starts with 'http', return it; otherwise, prefix it with NEXT_PUBLIC_API_URL.
+  const computeLogoUrl = (url?: string): string | undefined => {
+    if (!url) return undefined;
+    return url.startsWith("http") ? url : `${process.env.NEXT_PUBLIC_API_URL}${url}`;
+  };
+
+  // On mount, if the form already contains a logoUrl (from previous upload), use it.
+  useEffect(() => {
+    const formLogo = form.getFieldValue("logoUrl");
+    if (formLogo) {
+      setLogoPreview(formLogo);
+    }
+  }, [form]);
+
   // Local state to hold the logo preview URL.
+  // Prioritize the form value over tenant.logoUrl.
   const [logoPreview, setLogoPreview] = useState<string | undefined>(
-    tenant?.logoUrl
-      ? // Remove the "/api" prefix if it exists and prepend the backend URL.
-        `${process.env.NEXT_PUBLIC_API_URL}${tenant.logoUrl.replace(/^\/api/, "")}`
-      : undefined
+    form.getFieldValue("logoUrl") || computeLogoUrl(tenant?.logoUrl)
   );
 
-  // Update logo preview if tenant.logoUrl changes.
+  // Pre-populate other form fields if not already set.
   useEffect(() => {
-    if (tenant?.logoUrl) {
-      const updatedLogo = `${process.env.NEXT_PUBLIC_API_URL}${tenant.logoUrl.replace(/^\/api/, "")}`;
-      setLogoPreview(updatedLogo);
-    }
-  }, [tenant?.logoUrl]);
-
-  // Pre-populate the form fields using tenant info.
-  useEffect(() => {
-    if (tenant && form) {
-      // Only pre-populate if fields haven't been touched.
-      if (!form.isFieldsTouched(true)) {
-        const mailingAddress = tenant.addresses?.find((addr) => addr.addressType === "mailing") || {};
-        form.setFieldsValue({
-          companyName: tenant.name ?? "",
-          // Map contact phone from the mailing address.
-          phone: mailingAddress.phone ?? "",
-          companyWebsite: tenant.companyWebsite ?? "",
-          // For Street Address, prefer mailingAddress.street; fallback to tenant.street or tenant.address.
-          address: mailingAddress.street ?? tenant.street ?? tenant.address ?? "",
-          city: mailingAddress.city ?? tenant.city ?? "",
-          state: mailingAddress.state ?? tenant.state ?? "",
-          zip: mailingAddress.zip ?? tenant.zip ?? "",
-          country: mailingAddress.country ?? tenant.country ?? "",
-          industry: tenant.industry ?? "",
-        });
-      }
+    if (tenant && form && !form.getFieldValue("companyName")) {
+      const mailingAddress =
+        tenant.addresses?.find((addr) => addr.addressType === "mailing") || {};
+      const initialValues = {
+        companyName: tenant.name ?? "",
+        phone: mailingAddress.phone ?? "",
+        companyWebsite: tenant.companyWebsite ?? "",
+        address: mailingAddress.street ?? tenant.street ?? tenant.address ?? "",
+        city: mailingAddress.city ?? tenant.city ?? "",
+        state: mailingAddress.state ?? tenant.state ?? "",
+        zip: mailingAddress.zip ?? tenant.zip ?? "",
+        country: mailingAddress.country ?? tenant.country ?? "",
+        industry: tenant.industry ?? "",
+        logoUrl: form.getFieldValue("logoUrl") || computeLogoUrl(tenant.logoUrl),
+      };
+      form.setFieldsValue(initialValues);
+      console.log("DEBUG - Form pre-populated with:", initialValues);
     }
   }, [tenant, form]);
 
-  // Watch for country changes to render the State/Province dropdown.
+  // Determine which State/Province field to render based on the selected country.
   const selectedCountry = Form.useWatch("country", form);
   const getNormalizedCountry = (country?: string) => (country || "").toLowerCase().trim();
   const normalizedCountry = getNormalizedCountry(selectedCountry);
-  const isUS = normalizedCountry === "us" || normalizedCountry === "united states" || normalizedCountry === "usa";
+  const isUS =
+    normalizedCountry === "us" ||
+    normalizedCountry === "united states" ||
+    normalizedCountry === "usa";
   const isCanada = normalizedCountry === "canada" || normalizedCountry === "ca";
 
   const renderStateProvinceField = () => {
@@ -211,18 +220,21 @@ const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({ form, t
     }
   };
 
-  // --- Logo Upload & Preview Section (moved to Branding) ---
+  // --- Branding Section: Logo Upload & Preview ---
   const handleLogoChange = (file: File) => {
     const previewUrl = URL.createObjectURL(file);
+    console.log("DEBUG - New logo file selected, preview URL:", previewUrl);
     setLogoPreview(previewUrl);
+    // Persist the new logo in the form.
+    form.setFieldsValue({ logoUrl: previewUrl });
     if (onLogoChange) {
       onLogoChange(file);
     }
   };
 
   const beforeLogoUpload = (file: File) => {
-    const isImage = file.type.startsWith("image/");
-    if (!isImage) {
+    const isImg = file.type.startsWith("image/");
+    if (!isImg) {
       message.error("You can only upload image files!");
       return Upload.LIST_IGNORE;
     }
@@ -239,7 +251,7 @@ const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({ form, t
   return (
     <>
       <Title level={4}>Company Information</Title>
-      
+
       {/* Row 1: Company Name and Contact Phone */}
       <Row gutter={16}>
         <Col span={12}>
@@ -300,9 +312,7 @@ const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({ form, t
             <Input placeholder="Enter city" />
           </Form.Item>
         </Col>
-        <Col span={12}>
-          {renderStateProvinceField()}
-        </Col>
+        <Col span={12}>{renderStateProvinceField()}</Col>
       </Row>
 
       {/* Row 4: Country and Zip/Postal Code */}
@@ -322,10 +332,7 @@ const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({ form, t
             name="zip"
             rules={[
               { required: true, message: "Please enter your zip/postal code" },
-              { 
-                pattern: /^\d{5}(-\d{4})?$/,
-                message: "Please enter a valid code (e.g., 12345 or 12345-6789)", 
-              },
+              { pattern: /^\d{5}(-\d{4})?$/, message: "Please enter a valid code (e.g., 12345 or 12345-6789)" },
             ]}
           >
             <Input placeholder="Enter zip/postal code" />
@@ -354,6 +361,9 @@ const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({ form, t
         ) : (
           logoUploadButton
         )}
+        <div style={{ marginTop: "10px", color: "red" }}>
+          DEBUG - Logo served from: {logoPreview || "None"}
+        </div>
       </div>
     </>
   );

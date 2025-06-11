@@ -1,5 +1,6 @@
 "use client";
 
+import '@ant-design/v5-patch-for-react-19';
 import React, { useState, useEffect } from "react";
 import {
   Layout,
@@ -33,7 +34,7 @@ export default function LoginPage() {
   const [messageApi, contextHolder] = message.useMessage();
 
   // Use environment variable with fallback.
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
   // Debug logging to verify API URL.
   console.log("NEXT_PUBLIC_API_URL:", process.env.NEXT_PUBLIC_API_URL);
@@ -55,7 +56,7 @@ export default function LoginPage() {
 
     try {
       const res = await fetch(
-        `${apiUrl}/tenants/by-domain?domain=${encodeURIComponent(domain)}`
+        `${apiUrl}/api/tenants/by-domain?domain=${encodeURIComponent(domain)}`
       );
       if (!res.ok) {
         setTenantOptions([]);
@@ -102,7 +103,7 @@ export default function LoginPage() {
     const payload = { email, companyID: tenant, password };
 
     try {
-      const loginEndpoint = `${apiUrl}/auth/login`;
+      const loginEndpoint = `${apiUrl}/api/auth/login`;
       const response = await fetch(loginEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

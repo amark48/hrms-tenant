@@ -97,7 +97,7 @@ const OnboardingWizard: React.FC = () => {
       setUserRoles(roles);
       if (user.tenantId) {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-        fetch(`${apiUrl}/tenants/${user.tenantId}`)
+        fetch(`${apiUrl}/api/tenants/${user.tenantId}`)
           .then((res) => res.json())
           .then((data) => {
             setTenant(data);

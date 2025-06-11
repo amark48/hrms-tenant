@@ -17,7 +17,7 @@ const AuthenticationSetupStep: React.FC<AuthenticationSetupStepProps> = ({
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    fetch(`${apiUrl}/auth/get-mfa-types`)
+    fetch(`${apiUrl}/api/auth/get-mfa-types`)
       .then((res) => res.json())
       .then((data) => {
         const validMfaTypes = Array.isArray(data)

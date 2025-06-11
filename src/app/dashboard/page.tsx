@@ -184,7 +184,7 @@ export default function Dashboard() {
       return;
     }
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    fetch(`${apiUrl}/users/me`, {
+    fetch(`${apiUrl}/api/users/me`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -215,7 +215,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (user && user.tenantId) {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      fetch(`${apiUrl}/tenants/${user.tenantId}`, {
+      fetch(`${apiUrl}/api/tenants/${user.tenantId}`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       })
@@ -240,7 +240,7 @@ export default function Dashboard() {
     if (tenantEditModalVisible) {
       const fetchMfaTypes = async () => {
         try {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/get-mfa-types`);
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/get-mfa-types`);
           if (!response.ok) {
             throw new Error("Failed to fetch MFA types.");
           }
@@ -270,7 +270,7 @@ export default function Dashboard() {
   useEffect(() => {
     (async () => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard/employee-trends`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tenants/employee-trends`);
         if (response.ok) {
           const data = await response.json();
           if (Array.isArray(data)) {
@@ -287,7 +287,7 @@ export default function Dashboard() {
   useEffect(() => {
     (async () => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard/department-performance`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tenants/department-performance`);
         if (response.ok) {
           const data = await response.json();
           if (Array.isArray(data)) {
@@ -479,7 +479,7 @@ export default function Dashboard() {
         onOk={(values) => {
           setTenantLoading(true);
           const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-          fetch(`${apiUrl}/tenants/${tenant.id}`, {
+          fetch(`${apiUrl}/api/tenants/${tenant.id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(values),
