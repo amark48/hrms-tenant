@@ -1,58 +1,80 @@
-import React, { useState, useEffect } from "react";
-import { Form, Select, Spin } from "antd";
+import React, { useEffect, useState } from "react";
+import { Form, Select, Checkbox, Typography, message } from "antd";
 
-const SubscriptionStep: React.FC = () => {
-  const [subscriptions, setSubscriptions] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [selectedSubscription, setSelectedSubscription] = useState<any>(null);
+const { Title } = Typography;
 
+export interface SubscriptionStepProps {
+  tenant?: {
+    // Assume tenant provides a subscriptionId that relates to one of the fetched subscriptions.
+    subscriptionId?: string;
+    autoRenew?: boolean;
+  };
+}
+
+interface SubscriptionOption {
+  id: string;
+  name: string;
+  // Add any additional properties as needed.
+}
+
+const SubscriptionStep: React.FC<SubscriptionStepProps> = ({ tenant }) => {
+  const [form] = Form.useForm();
+  const [subscriptionOptions, setSubscriptionOptions] = useState<SubscriptionOption[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+
+  // Fetch subscription plans from the API endpoint specified in .env.local
   useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    fetch(`${apiUrl}/subscriptions`)
-      .then((res) => res.json())
-      .then((data) => setSubscriptions(data))
-      .catch((err) => {
-        console.error("Error fetching subscriptions", err);
-      })
-      .finally(() => setLoading(false));
+    const fetchSubscriptions = async () => {
+      setLoading(true);
+      try {
+        // Read the API URL from process.env.NEXT_PUBLIC_API_URL
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+        const res = await fetch(`${apiUrl}/subscriptions`);
+        if (!res.ok) {
+          throw new Error("Failed to fetch subscriptions");
+        }
+        const data: SubscriptionOption[] = await res.json();
+        setSubscriptionOptions(data);
+      } catch (error) {
+        message.error("Error fetching subscription options");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSubscriptions();
   }, []);
 
-  if (loading) return <Spin size="large" />;
+  // Pre-populate the form fields from tenant data when available.
+  useEffect(() => {
+    if (tenant) {
+      form.setFieldsValue({
+        subscriptionPlan: tenant.subscriptionId || undefined,
+        autoRenew: tenant.autoRenew || false,
+      });
+    }
+  }, [tenant, form]);
+
+  // Map the fetched subscription options to the format expected by antd's Select.
+  const selectOptions = subscriptionOptions.map((option) => ({
+    label: option.name,
+    value: option.id,
+  }));
 
   return (
     <div>
-      <h3>Subscription Information</h3>
-      <Form layout="vertical">
+      <Title level={4}>Subscription Information</Title>
+      <Form layout="vertical" form={form}>
         <Form.Item
-          label="Subscription"
-          name="subscriptionId"
-          rules={[{ required: true, message: "Please select a subscription" }]}
+          label="Subscription Plan"
+          name="subscriptionPlan"
+          rules={[{ required: true, message: "Please select a subscription plan" }]}
         >
-          <Select
-            placeholder="Select a subscription"
-            options={subscriptions.map((sub) => ({
-              label: sub.name,
-              value: sub.id,
-            }))}
-            onChange={(value) => {
-              const sub = subscriptions.find((s) => s.id === value) || null;
-              setSelectedSubscription(sub);
-            }}
-          />
+          <Select options={selectOptions} placeholder="Select a plan" loading={loading} />
+        </Form.Item>
+        <Form.Item name="autoRenew" valuePropName="checked">
+          <Checkbox>Auto Renew Subscription</Checkbox>
         </Form.Item>
       </Form>
-      {selectedSubscription && (
-        <div style={{ marginTop: "16px" }}>
-          <h4>Subscription Details:</h4>
-          <p>
-            <strong>Name:</strong> {selectedSubscription.name}
-          </p>
-          <p>
-            <strong>Description:</strong>{" "}
-            {selectedSubscription.description || "No description available."}
-          </p>
-        </div>
-      )}
     </div>
   );
 };

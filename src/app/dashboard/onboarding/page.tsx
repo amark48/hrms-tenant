@@ -1,26 +1,22 @@
 "use client";
-
 import React, { useState, useEffect } from "react";
 import { Layout, Steps, Button, Form, message, Spin } from "antd";
 import DashboardHeader from "../DashboardHeader/page";
 
 // Import modular step components
 import WelcomeStep from "../../../components/onboarding/WelcomeStep";
-import CompanyInformationForm from "../../../components/onboarding/CompanyInformationForm";
-import CompanyLogoStep from "../../../components/onboarding/CompanyLogoStep";
+import CompanyInfoAndLogoForm from "../../../components/onboarding/CompanyInfoAndLogoForm";
 import SubscriptionStep from "../../../components/onboarding/SubscriptionStep";
 import AuthenticationSetupStep from "../../../components/onboarding/AuthenticationSetupStep";
 import BillingStep from "../../../components/onboarding/BillingStep";
 import ReviewStep from "../../../components/onboarding/ReviewStep";
 
-// Import the utility for role-based menu items.
-// Make sure that getAccessibleMenuItems returns standardMenuItems if roles is empty.
+// Utility for role-based menu items
 import { getAccessibleMenuItems } from "../../../utils/menuConfig";
 
 const { Content, Footer } = Layout;
 const { Step } = Steps;
 
-// Define interfaces for company info and tenant
 export interface CompanyInfo {
   companyName?: string;
   address?: string;
@@ -78,7 +74,7 @@ const wizardContainerStyle = {
   boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
 };
 
-const OnboardingWizard = () => {
+const OnboardingWizard: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>(initialCompanyInfo);
   const [form] = Form.useForm();
@@ -91,7 +87,7 @@ const OnboardingWizard = () => {
     const userStr = localStorage.getItem("user");
     if (userStr) {
       const user = JSON.parse(userStr);
-      // Set roles from user.roles (or user.role) if available. Use a fallback if empty.
+      // Set roles from user.roles (or user.role) if available.
       const roles =
         (Array.isArray(user.roles) && user.roles.length > 0
           ? user.roles
@@ -115,7 +111,7 @@ const OnboardingWizard = () => {
         setLoadingTenant(false);
       }
     } else {
-      // Fallback: if no user is present, assume default role (for instance "employee")
+      // Fallback if no user is present, assume default role.
       setUserRoles(["employee"]);
       setLoadingTenant(false);
     }
@@ -174,7 +170,7 @@ const OnboardingWizard = () => {
         if (!initialData.billingCountry)
           initialData.billingCountry = billingAddress.country;
       }
-      // Pre-populate industry if not already set in form
+      // Pre-populate industry if not already set in form.
       if (tenant.industry && !initialData.industry) {
         initialData.industry = tenant.industry;
       }
@@ -190,7 +186,7 @@ const OnboardingWizard = () => {
     form.setFieldsValue(initialData);
   }, [form, tenant]);
 
-  // Save progress – validate fields on steps using the form (steps 1 & 5)
+  // Save progress – validate fields on steps using the form (for steps where progress matters).
   const saveProgress = async () => {
     try {
       if (currentStep === 1 || currentStep === 5) {
@@ -221,7 +217,7 @@ const OnboardingWizard = () => {
     setCurrentStep((prev) => prev + 1);
   };
 
-  // Previous step function.
+  // Previous step.
   const prev = () => {
     setCurrentStep((prev) => prev - 1);
   };
@@ -239,18 +235,32 @@ const OnboardingWizard = () => {
     }
   };
 
-  // Extract MFA settings (if any) from tenant for the Authentication Setup step.
+  // Extract MFA settings (if any) for the Authentication step.
   const initialMfaEnabled = tenant?.mfaEnabled ?? false;
   const initialAllowedMfa = tenant?.allowedMfa ?? [];
 
-  // Define wizard steps with modular components.
+  // Define wizard steps with the updated ordering.
+  // Note: Step 3 is now "Authentication" (changed from "Authentication Setup" to simply "Authentication").
   const steps = [
-    { title: "Welcome", content: <WelcomeStep /> },
-    { title: "Company Information", content: <CompanyInformationForm form={form} tenant={tenant} /> },
-    { title: "Company Logo", content: <CompanyLogoStep tenant={tenant} /> },
-    { title: "Subscription", content: <SubscriptionStep /> },
     {
-      title: "Authentication Setup",
+      title: "Welcome",
+      content: <WelcomeStep />,
+    },
+    {
+      title: "Company Info",
+      content: (
+        <CompanyInfoAndLogoForm
+          form={form}
+          tenant={tenant}
+          // Pass your onLogoChange handler if needed.
+          onLogoChange={(file: File) =>
+            console.log("New logo selected:", file)
+          }
+        />
+      ),
+    },
+    {
+      title: "Authentication",
       content: (
         <AuthenticationSetupStep
           initialMfaEnabled={initialMfaEnabled}
@@ -258,13 +268,24 @@ const OnboardingWizard = () => {
         />
       ),
     },
-    { title: "Billing Information", content: <BillingStep form={form} /> },
-    { title: "Review & Finish", content: <ReviewStep companyInfo={companyInfo} /> },
+    {
+      title: "Subscription",
+      content: <SubscriptionStep />,
+    },
+    {
+      title: "Billing Information",
+      content: <BillingStep form={form} />,
+    },
+    {
+      title: "Review & Finish",
+      content: <ReviewStep companyInfo={companyInfo} />,
+    },
   ];
 
-  // Get the filtered topbar menu items based on user roles.
-  // Fallback: if userRoles is empty, we assume the user is an "employee".
-  const menuItems = getAccessibleMenuItems(userRoles && userRoles.length > 0 ? userRoles : ["employee"]);
+  // Get filtered topbar menu items based on user roles.
+  const menuItems = getAccessibleMenuItems(
+    userRoles && userRoles.length > 0 ? userRoles : ["employee"]
+  );
 
   if (loadingTenant) {
     return (
@@ -302,7 +323,7 @@ const OnboardingWizard = () => {
               <Step key={index} title={step.title} />
             ))}
           </Steps>
-          {/* Wrap step content in a Form to ensure the Form instance is always connected */}
+          {/* Wrap the step content in a Form so that the Form instance is always connected */}
           <Form form={form} layout="vertical">
             <div style={wizardContainerStyle}>{steps[currentStep].content}</div>
           </Form>

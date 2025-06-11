@@ -103,10 +103,9 @@ export interface CompanyInfoAndLogoFormProps {
     adminEmail?: string;
     subscriptionId?: string;
     industry?: string;
-    // The tenant now has an addresses array.
+    // Tenant now has an addresses array containing mailing info.
     addresses?: Array<{
       addressType?: string;
-      // "street" holds the mailing street value.
       street?: string;
       city?: string;
       state?: string;
@@ -121,43 +120,42 @@ export interface CompanyInfoAndLogoFormProps {
     state?: string;
     zip?: string;
     country?: string;
-    // New Website field mapping to companyWebsite.
+    // Website field mapping to companyWebsite.
     companyWebsite?: string;
-    // New Contact Phone field mapping.
+    // Contact Phone field mapping.
     phone?: string;
-    // Existing company logo URL served from the backend.
+    // Existing logo provided by the backend – as a relative URL (e.g. "/api/images/logo.png")
     logoUrl?: string;
   };
-  // Callback when a new logo file is selected.
   onLogoChange?: (file: File) => void;
 }
 
-const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({
-  form,
-  tenant,
-  onLogoChange,
-}) => {
-  // Local state for the logo preview (existing or uploaded).
-  const [logoPreview, setLogoPreview] = useState<string | undefined>(tenant?.logoUrl);
+const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({ form, tenant, onLogoChange }) => {
+  // Local state to hold the logo preview URL.
+  const [logoPreview, setLogoPreview] = useState<string | undefined>(
+    tenant?.logoUrl
+      ? // Remove the "/api" prefix if it exists and prepend the backend URL.
+        `${process.env.NEXT_PUBLIC_API_URL}${tenant.logoUrl.replace(/^\/api/, "")}`
+      : undefined
+  );
 
   // Update logo preview if tenant.logoUrl changes.
   useEffect(() => {
     if (tenant?.logoUrl) {
-      setLogoPreview(tenant.logoUrl);
+      const updatedLogo = `${process.env.NEXT_PUBLIC_API_URL}${tenant.logoUrl.replace(/^\/api/, "")}`;
+      setLogoPreview(updatedLogo);
     }
   }, [tenant?.logoUrl]);
 
-  // Pre-populate info fields if form has not been touched.
+  // Pre-populate the form fields using tenant info.
   useEffect(() => {
     if (tenant && form) {
-      // Only set fields if none have been interacted with, so save progress is not overridden.
+      // Only pre-populate if fields haven't been touched.
       if (!form.isFieldsTouched(true)) {
-        // Extract mailing address from tenant.addresses array, if any.
-        const mailingAddress =
-          tenant.addresses?.find((addr) => addr.addressType === "mailing") || {};
+        const mailingAddress = tenant.addresses?.find((addr) => addr.addressType === "mailing") || {};
         form.setFieldsValue({
           companyName: tenant.name ?? "",
-          // Map contact phone from mailing address.
+          // Map contact phone from the mailing address.
           phone: mailingAddress.phone ?? "",
           companyWebsite: tenant.companyWebsite ?? "",
           // For Street Address, prefer mailingAddress.street; fallback to tenant.street or tenant.address.
@@ -172,14 +170,11 @@ const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({
     }
   }, [tenant, form]);
 
-  // Watch the "country" field to conditionally render the state/province field.
+  // Watch for country changes to render the State/Province dropdown.
   const selectedCountry = Form.useWatch("country", form);
   const getNormalizedCountry = (country?: string) => (country || "").toLowerCase().trim();
   const normalizedCountry = getNormalizedCountry(selectedCountry);
-  const isUS =
-    normalizedCountry === "us" ||
-    normalizedCountry === "united states" ||
-    normalizedCountry === "usa";
+  const isUS = normalizedCountry === "us" || normalizedCountry === "united states" || normalizedCountry === "usa";
   const isCanada = normalizedCountry === "canada" || normalizedCountry === "ca";
 
   const renderStateProvinceField = () => {
@@ -208,12 +203,7 @@ const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({
         <Form.Item
           label="State/Province"
           name="state"
-          rules={[
-            {
-              required: false,
-              message: "Providing state/province is recommended",
-            },
-          ]}
+          rules={[{ required: false, message: "Providing state/province is recommended" }]}
         >
           <Input placeholder="Enter state/province (optional)" />
         </Form.Item>
@@ -221,8 +211,7 @@ const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({
     }
   };
 
-  // --- Logo Upload & Preview Section ---
-  // Called when a new logo file is selected.
+  // --- Logo Upload & Preview Section (moved to Branding) ---
   const handleLogoChange = (file: File) => {
     const previewUrl = URL.createObjectURL(file);
     setLogoPreview(previewUrl);
@@ -238,7 +227,6 @@ const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({
       return Upload.LIST_IGNORE;
     }
     handleLogoChange(file);
-    // Return false to prevent automatic upload.
     return false;
   };
 
@@ -250,33 +238,8 @@ const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({
 
   return (
     <>
-      {/* Condensed header for the combined step */}
       <Title level={4}>Company Information</Title>
-
-      {/* Company Logo Section (integrated within Company Info) */}
-      <div style={{ textAlign: "center", marginBottom: "20px" }}>
-        <h4>Company Logo</h4>
-        {logoPreview ? (
-          <>
-            <img
-              src={logoPreview}
-              alt="Company Logo Preview"
-              style={{
-                maxWidth: "200px",
-                maxHeight: "200px",
-                objectFit: "contain",
-                display: "block",
-                margin: "0 auto 10px",
-              }}
-            />
-            {logoUploadButton}
-          </>
-        ) : (
-          logoUploadButton
-        )}
-      </div>
-
-      {/* Company Info Fields */}
+      
       {/* Row 1: Company Name and Contact Phone */}
       <Row gutter={16}>
         <Col span={12}>
@@ -359,9 +322,9 @@ const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({
             name="zip"
             rules={[
               { required: true, message: "Please enter your zip/postal code" },
-              {
+              { 
                 pattern: /^\d{5}(-\d{4})?$/,
-                message: "Please enter a valid code (e.g., 12345 or 12345-6789)",
+                message: "Please enter a valid code (e.g., 12345 or 12345-6789)", 
               },
             ]}
           >
@@ -369,6 +332,29 @@ const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({
           </Form.Item>
         </Col>
       </Row>
+
+      {/* Branding Section with Logo Preview and Upload */}
+      <div style={{ textAlign: "center", marginTop: "40px" }}>
+        <Title level={4}>Branding</Title>
+        {logoPreview ? (
+          <>
+            <img
+              src={logoPreview}
+              alt="Brand Logo Preview"
+              style={{
+                maxWidth: "200px",
+                maxHeight: "200px",
+                objectFit: "contain",
+                display: "block",
+                margin: "0 auto 10px",
+              }}
+            />
+            {logoUploadButton}
+          </>
+        ) : (
+          logoUploadButton
+        )}
+      </div>
     </>
   );
 };
