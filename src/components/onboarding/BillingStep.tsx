@@ -71,7 +71,11 @@ const BillingStep: React.FC<BillingStepProps> = ({ tenant }) => {
           name="billingState"
           rules={[{ required: true, message: "Please select your state" }]}
         >
-          <Select placeholder="Select state" options={US_STATES_OPTIONS} />
+          <Select 
+            placeholder="Select state" 
+            options={US_STATES_OPTIONS} 
+            onChange={(value) => formInstance.setFieldsValue({ billingState: value })}
+          />
         </Form.Item>
       );
     } else if (billingCountry && billingCountry.toLowerCase() === "canada") {
@@ -81,7 +85,11 @@ const BillingStep: React.FC<BillingStepProps> = ({ tenant }) => {
           name="billingState"
           rules={[{ required: true, message: "Please select your province" }]}
         >
-          <Select placeholder="Select province" options={CANADIAN_PROVINCES_OPTIONS} />
+          <Select 
+            placeholder="Select province" 
+            options={CANADIAN_PROVINCES_OPTIONS} 
+            onChange={(value) => formInstance.setFieldsValue({ billingState: value })}
+          />
         </Form.Item>
       );
     } else {
@@ -105,7 +113,11 @@ const BillingStep: React.FC<BillingStepProps> = ({ tenant }) => {
         name="paymentMethod"
         rules={[{ required: true, message: "Please select a payment method" }]}
       >
-        <Select placeholder="Select a payment method" options={PAYMENT_METHOD_OPTIONS} />
+        <Select 
+          placeholder="Select a payment method" 
+          options={PAYMENT_METHOD_OPTIONS} 
+          onChange={(value) => formInstance.setFieldsValue({ paymentMethod: value })}
+        />
       </Form.Item>
 
       <Form.Item shouldUpdate={(prev, curr) => prev.paymentMethod !== curr.paymentMethod}>
@@ -120,14 +132,18 @@ const BillingStep: React.FC<BillingStepProps> = ({ tenant }) => {
                   name="cardType"
                   rules={[{ required: true, message: "Please select your card type" }]}
                 >
-                  <Select placeholder="Select card type" options={CREDIT_CARD_TYPE_OPTIONS} />
+                  <Select 
+                    placeholder="Select card type" 
+                    options={CREDIT_CARD_TYPE_OPTIONS}
+                    onChange={(value) => formInstance.setFieldsValue({ cardType: value })}
+                  />
                 </Form.Item>
                 <Form.Item
                   label="Name on Card"
                   name="cardName"
                   rules={[{ required: true, message: "Please enter the name on the card" }]}
                 >
-                  <Input placeholder="Enter name as printed on card" />
+                  <Input onChange={(e) => formInstance.setFieldsValue({ cardName: e.target.value })} placeholder="Enter name as printed on card" />
                 </Form.Item>
                 <Form.Item
                   label="Card Number"
@@ -140,7 +156,7 @@ const BillingStep: React.FC<BillingStepProps> = ({ tenant }) => {
                     },
                   ]}
                 >
-                  <Input placeholder="1234-5678-9012-3456" />
+                  <Input onChange={(e) => formInstance.setFieldsValue({ cardNumber: e.target.value })} placeholder="1234-5678-9012-3456" />
                 </Form.Item>
                 <Row gutter={16}>
                   <Col span={12}>
@@ -154,6 +170,7 @@ const BillingStep: React.FC<BillingStepProps> = ({ tenant }) => {
                         format="MM/YY"
                         style={{ width: "100%" }}
                         placeholder="MM/YY"
+                        onChange={(date) => formInstance.setFieldsValue({ cardExpiry: date })}
                       />
                     </Form.Item>
                   </Col>
@@ -163,12 +180,14 @@ const BillingStep: React.FC<BillingStepProps> = ({ tenant }) => {
                       name="cardCVV"
                       rules={[{ required: true, message: "Please enter the CVV" }]}
                     >
-                      <Input placeholder="CVV" style={{ width: "100%" }} />
+                      <Input onChange={(e) => formInstance.setFieldsValue({ cardCVV: e.target.value })} placeholder="CVV" style={{ width: "100%" }} />
                     </Form.Item>
                   </Col>
                 </Row>
                 <Form.Item name="saveCardInfo" valuePropName="checked">
-                  <Checkbox>Save card information</Checkbox>
+                  <Checkbox onChange={(e) => formInstance.setFieldsValue({ saveCardInfo: e.target.checked })}>
+                    Save card information
+                  </Checkbox>
                 </Form.Item>
               </div>
             );
@@ -181,24 +200,26 @@ const BillingStep: React.FC<BillingStepProps> = ({ tenant }) => {
                   name="accountName"
                   rules={[{ required: true, message: "Please enter the account name" }]}
                 >
-                  <Input placeholder="Enter account name" />
+                  <Input onChange={(e) => formInstance.setFieldsValue({ accountName: e.target.value })} placeholder="Enter account name" />
                 </Form.Item>
                 <Form.Item
                   label="Bank Account Number"
                   name="bankAccountNumber"
                   rules={[{ required: true, message: "Please enter your bank account number" }]}
                 >
-                  <Input placeholder="Enter bank account number" />
+                  <Input onChange={(e) => formInstance.setFieldsValue({ bankAccountNumber: e.target.value })} placeholder="Enter bank account number" />
                 </Form.Item>
                 <Form.Item
                   label="Bank Routing Number"
                   name="bankRoutingNumber"
                   rules={[{ required: true, message: "Please enter your bank routing number" }]}
                 >
-                  <Input placeholder="Enter bank routing number" />
+                  <Input onChange={(e) => formInstance.setFieldsValue({ bankRoutingNumber: e.target.value })} placeholder="Enter bank routing number" />
                 </Form.Item>
                 <Form.Item name="authorizeBankTransfer" valuePropName="checked">
-                  <Checkbox>Authorize us to initiate the fund request</Checkbox>
+                  <Checkbox onChange={(e) => formInstance.setFieldsValue({ authorizeBankTransfer: e.target.checked })}>
+                    Authorize us to initiate the fund request
+                  </Checkbox>
                 </Form.Item>
               </div>
             );
@@ -222,14 +243,18 @@ const BillingStep: React.FC<BillingStepProps> = ({ tenant }) => {
         name="billingCountry"
         rules={[{ required: true, message: "Please select your billing country" }]}
       >
-        <Select placeholder="Select billing country" options={COUNTRY_OPTIONS} />
+        <Select 
+          placeholder="Select billing country" 
+          options={COUNTRY_OPTIONS} 
+          onChange={(value) => formInstance.setFieldsValue({ billingCountry: value })}
+        />
       </Form.Item>
       <Form.Item
         label="Billing Street Address"
         name="billingAddress"
         rules={[{ required: true, message: "Please enter your billing street address" }]}
       >
-        <Input placeholder="Enter billing street address" />
+        <Input onChange={(e) => formInstance.setFieldsValue({ billingAddress: e.target.value })} placeholder="Enter billing street address" />
       </Form.Item>
       {/* Billing City, Billing State/Province, Billing Zip on one row */}
       <Row gutter={16}>
@@ -239,7 +264,7 @@ const BillingStep: React.FC<BillingStepProps> = ({ tenant }) => {
             name="billingCity"
             rules={[{ required: true, message: "Please enter your billing city" }]}
           >
-            <Input placeholder="City" />
+            <Input onChange={(e) => formInstance.setFieldsValue({ billingCity: e.target.value })} placeholder="City" />
           </Form.Item>
         </Col>
         <Col span={8}>
@@ -251,7 +276,7 @@ const BillingStep: React.FC<BillingStepProps> = ({ tenant }) => {
             name="billingZip"
             rules={[{ required: true, message: "Please enter your billing zip/postal code" }]}
           >
-            <Input placeholder="Zip/Postal Code" />
+            <Input onChange={(e) => formInstance.setFieldsValue({ billingZip: e.target.value })} placeholder="Zip/Postal Code" />
           </Form.Item>
         </Col>
       </Row>

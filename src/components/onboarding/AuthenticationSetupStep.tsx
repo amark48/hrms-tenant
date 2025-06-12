@@ -3,7 +3,7 @@ import '@ant-design/v5-patch-for-react-19';
 import React, { useEffect, useState } from "react";
 import { Form, Checkbox, Typography, Spin, Alert } from "antd";
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Paragraph } = Typography;
 
 export interface AuthenticationSetupStepProps {
   initialMfaEnabled: boolean;    // For new tenants, should be false.
@@ -28,22 +28,10 @@ const AuthenticationSetupStep: React.FC<AuthenticationSetupStepProps> = ({
   const [fetchError, setFetchError] = useState<string | null>(null);
   // Local state for the selected MFA methods.
   const [selectedMfaMethods, setSelectedMfaMethods] = useState<string[]>(initialAllowedMfa);
-  // Debug state for tenant data.
-  const [debugTenant, setDebugTenant] = useState<any>(tenant || "None");
-
-  // Log initial properties on mount.
-  useEffect(() => {
-    console.log("DEBUG - AuthenticationSetupStep mounted");
-    console.log("DEBUG - initialMfaEnabled:", initialMfaEnabled);
-    console.log("DEBUG - initialAllowedMfa:", initialAllowedMfa);
-    console.log("DEBUG - Tenant received:", tenant);
-    setDebugTenant(tenant || "None");
-  }, [initialMfaEnabled, initialAllowedMfa, tenant]);
 
   // On mount, update MFA enabled state from the shared form.
   useEffect(() => {
     const currentValue = formInstance.getFieldValue("mfaEnabled");
-    console.log("DEBUG - Reading mfaEnabled from form:", currentValue);
     setMfaEnabled(currentValue || false);
   }, [formInstance]);
 
@@ -60,11 +48,9 @@ const AuthenticationSetupStep: React.FC<AuthenticationSetupStepProps> = ({
           }
           // Expecting an array of strings, e.g. ["TOTP", "EMAIL", "SMS"]
           const data: string[] = await res.json();
-          console.log("DEBUG - Fetched MFA options:", data);
           setAvailableMfaOptions(data);
           setFetchError(null);
         } catch (error: any) {
-          console.error("DEBUG - Error fetching MFA options:", error);
           setFetchError(error.message || "Error fetching MFA options");
         } finally {
           setLoadingOptions(false);
@@ -81,7 +67,6 @@ const AuthenticationSetupStep: React.FC<AuthenticationSetupStepProps> = ({
   // Handler for MFA-enabled checkbox changes.
   const handleMfaCheckboxChange = (e: any) => {
     const checked = e.target.checked;
-    console.log("DEBUG - MFA Enabled checkbox changed:", checked);
     setMfaEnabled(checked);
     // Update the shared form field.
     formInstance.setFieldsValue({ mfaEnabled: checked });
@@ -89,7 +74,6 @@ const AuthenticationSetupStep: React.FC<AuthenticationSetupStepProps> = ({
 
   // Handler for changes in the allowed MFA methods.
   const handleMfaMethodsChange = (checkedValues: any) => {
-    console.log("DEBUG - Allowed MFA methods changed:", checkedValues);
     setSelectedMfaMethods(checkedValues);
     formInstance.setFieldsValue({ allowedMfa: checkedValues });
   };
@@ -138,29 +122,6 @@ const AuthenticationSetupStep: React.FC<AuthenticationSetupStepProps> = ({
           )}
         </>
       )}
-
-      {/* On-screen debug panel */}
-      <div style={{ marginTop: "20px", padding: "10px", backgroundColor: "#e8e8e8", borderRadius: "4px" }}>
-        <Title level={5}>Authentication Setup Debug Info</Title>
-        <Text>MFA Enabled: {mfaEnabled ? "Yes" : "No"}</Text>
-        <br />
-        <Text>
-          Selected MFA Methods: {selectedMfaMethods.length > 0 
-            ? selectedMfaMethods.join(", ") 
-            : "None"}
-        </Text>
-        <br />
-        <Text>
-          Available MFA Options: {availableMfaOptions.length > 0 
-            ? availableMfaOptions.join(", ") 
-            : "None"}
-        </Text>
-        <br />
-        <Text>Tenant Data:</Text>
-        <pre style={{ backgroundColor: "#fff", padding: "8px", borderRadius: "4px" }}>
-          {JSON.stringify(debugTenant, null, 2)}
-        </pre>
-      </div>
     </div>
   );
 };
