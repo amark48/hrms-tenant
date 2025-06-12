@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { TenantProvider } from "src/context/TenantContext";
+import { TenantProvider } from "../context/TenantContext";  // Updated relative path
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

@@ -1,9 +1,20 @@
+"use client";
 import '@ant-design/v5-patch-for-react-19';
 import React, { useEffect, useState } from "react";
-import { Form, Input, Select, Row, Col, Typography, Button, Upload, message } from "antd";
+import { 
+  Form, 
+  Input, 
+  Select, 
+  Row, 
+  Col, 
+  Typography, 
+  Button, 
+  Upload, 
+  message 
+} from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 // Industry options
 const INDUSTRY_OPTIONS = [
@@ -96,94 +107,71 @@ const COUNTRY_OPTIONS = [
 ];
 
 export interface CompanyInfoAndLogoFormProps {
-  form: any;
-  tenant?: {
-    id?: string;
-    name?: string;
-    domain?: string;
-    adminEmail?: string;
-    subscriptionId?: string;
-    industry?: string;
-    addresses?: Array<{
-      addressType?: string;
-      street?: string;
-      city?: string;
-      state?: string;
-      zip?: string;
-      country?: string;
-      phone?: string;
-    }>;
-    street?: string;
-    address?: string;
-    city?: string;
-    state?: string;
-    zip?: string;
-    country?: string;
-    companyWebsite?: string;
-    phone?: string;
-    // Existing logo provided by the backend (absolute URL is expected)
-    logoUrl?: string;
-  };
+  form: any; // Provided by the wizard so that the entire process uses a single form
+  tenant?: any; // Optional: for debug purposes (new tenant onboarding normally starts empty)
   onLogoChange?: (file: File) => void;
 }
 
 const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({ form, tenant, onLogoChange }) => {
-  // Debug log the raw tenant.logoUrl.
+  if (!form) {
+    throw new Error("CompanyInfoAndLogoForm requires a valid form instance.");
+  }
+  
+  // Debug log to track incoming tenant data (if any)
   useEffect(() => {
-    console.log("DEBUG - Tenant logoUrl (raw):", tenant?.logoUrl);
+    console.log("DEBUG - CompanyInfoAndLogoForm received tenant:", tenant);
   }, [tenant]);
 
-  // Helper to compute the full logo URL.
-  // If tenant.logoUrl starts with 'http', return it; otherwise, prefix it with NEXT_PUBLIC_API_URL.
+  // Helper function to compute the full URL of the logo.
   const computeLogoUrl = (url?: string): string | undefined => {
     if (!url) return undefined;
     return url.startsWith("http") ? url : `${process.env.NEXT_PUBLIC_API_URL}${url}`;
   };
 
-  // On mount, if the form already contains a logoUrl (from previous upload), use it.
-  useEffect(() => {
-    const formLogo = form.getFieldValue("logoUrl");
-    if (formLogo) {
-      setLogoPreview(formLogo);
-    }
-  }, [form]);
-
-  // Local state to hold the logo preview URL.
-  // Prioritize the form value over tenant.logoUrl.
+  // Get the initial logo preview—the form instance is assumed to be shared.
   const [logoPreview, setLogoPreview] = useState<string | undefined>(
     form.getFieldValue("logoUrl") || computeLogoUrl(tenant?.logoUrl)
   );
 
-  // Pre-populate other form fields if not already set.
+  // For new tenants, we no longer prepopulate fields from an existing tenant object.
+  // We assume all fields are blank (or set with defaults) when the form loads.
+  // However, if the tenant prop exists (for debugging), you may log it.
   useEffect(() => {
-    if (tenant && form && !form.getFieldValue("companyName")) {
-      const mailingAddress =
-        tenant.addresses?.find((addr) => addr.addressType === "mailing") || {};
-      const initialValues = {
-        companyName: tenant.name ?? "",
-        phone: mailingAddress.phone ?? "",
-        companyWebsite: tenant.companyWebsite ?? "",
-        address: mailingAddress.street ?? tenant.street ?? tenant.address ?? "",
-        city: mailingAddress.city ?? tenant.city ?? "",
-        state: mailingAddress.state ?? tenant.state ?? "",
-        zip: mailingAddress.zip ?? tenant.zip ?? "",
-        country: mailingAddress.country ?? tenant.country ?? "",
-        industry: tenant.industry ?? "",
-        logoUrl: form.getFieldValue("logoUrl") || computeLogoUrl(tenant.logoUrl),
-      };
-      form.setFieldsValue(initialValues);
-      console.log("DEBUG - Form pre-populated with:", initialValues);
-    }
-  }, [tenant, form]);
+    // No merging of tenant data is done here—the fields are meant to be filled out afresh.
+    console.log("DEBUG - CompanyInfoAndLogoForm: initializing form with blank defaults.");
+  }, []);
 
-  // Determine which State/Province field to render based on the selected country.
+  // Handle logo file change: update preview and set form field.
+  const handleLogoChange = (file: File) => {
+    const previewUrl = URL.createObjectURL(file);
+    console.log("DEBUG - New logo file selected, preview URL:", previewUrl);
+    setLogoPreview(previewUrl);
+    form.setFieldsValue({ logoUrl: previewUrl });
+    if (onLogoChange) {
+      onLogoChange(file);
+    }
+  };
+
+  const beforeLogoUpload = (file: File) => {
+    const isImg = file.type.startsWith("image/");
+    if (!isImg) {
+      message.error("You can only upload image files!");
+      return Upload.LIST_IGNORE;
+    }
+    handleLogoChange(file);
+    return false; // Prevent auto-upload.
+  };
+
+  const logoUploadButton = (
+    <Upload beforeUpload={beforeLogoUpload} showUploadList={false}>
+      <Button icon={<UploadOutlined />}>Replace Logo</Button>
+    </Upload>
+  );
+
+  // Determine which state/province field to display based on country selection.
   const selectedCountry = Form.useWatch("country", form);
-  const getNormalizedCountry = (country?: string) => (country || "").toLowerCase().trim();
-  const normalizedCountry = getNormalizedCountry(selectedCountry);
-  const isUS =
-    normalizedCountry === "us" ||
-    normalizedCountry === "united states" ||
-    normalizedCountry === "usa";
+  const normalizedCountry = (selectedCountry || "").toLowerCase().trim();
+  const isUS = normalizedCountry === "us" || normalizedCountry === "united states" || normalizedCountry === "usa";
   const isCanada = normalizedCountry === "canada" || normalizedCountry === "ca";
 
   const renderStateProvinceField = () => {
@@ -220,39 +208,9 @@ const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({ form, t
     }
   };
 
-  // --- Branding Section: Logo Upload & Preview ---
-  const handleLogoChange = (file: File) => {
-    const previewUrl = URL.createObjectURL(file);
-    console.log("DEBUG - New logo file selected, preview URL:", previewUrl);
-    setLogoPreview(previewUrl);
-    // Persist the new logo in the form.
-    form.setFieldsValue({ logoUrl: previewUrl });
-    if (onLogoChange) {
-      onLogoChange(file);
-    }
-  };
-
-  const beforeLogoUpload = (file: File) => {
-    const isImg = file.type.startsWith("image/");
-    if (!isImg) {
-      message.error("You can only upload image files!");
-      return Upload.LIST_IGNORE;
-    }
-    handleLogoChange(file);
-    return false;
-  };
-
-  const logoUploadButton = (
-    <Upload beforeUpload={beforeLogoUpload} showUploadList={false}>
-      <Button icon={<UploadOutlined />}>Replace Logo</Button>
-    </Upload>
-  );
-
   return (
     <>
       <Title level={4}>Company Information</Title>
-
-      {/* Row 1: Company Name and Contact Phone */}
       <Row gutter={16}>
         <Col span={12}>
           <Form.Item
@@ -269,12 +227,10 @@ const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({ form, t
             name="phone"
             rules={[{ required: true, message: "Please enter your contact phone" }]}
           >
-            <Input placeholder="Enter contact phone" />
+            <Input placeholder="Enter your contact phone" />
           </Form.Item>
         </Col>
       </Row>
-
-      {/* Row 2: Industry and Website */}
       <Row gutter={16}>
         <Col span={12}>
           <Form.Item
@@ -287,12 +243,10 @@ const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({ form, t
         </Col>
         <Col span={12}>
           <Form.Item label="Website" name="companyWebsite">
-            <Input placeholder="Enter company website" />
+            <Input placeholder="Enter your company website" />
           </Form.Item>
         </Col>
       </Row>
-
-      {/* Street Address Field */}
       <Form.Item
         label="Street Address"
         name="address"
@@ -300,8 +254,6 @@ const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({ form, t
       >
         <Input placeholder="Enter street address" />
       </Form.Item>
-
-      {/* Row 3: City and State/Province */}
       <Row gutter={16}>
         <Col span={12}>
           <Form.Item
@@ -312,10 +264,10 @@ const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({ form, t
             <Input placeholder="Enter city" />
           </Form.Item>
         </Col>
-        <Col span={12}>{renderStateProvinceField()}</Col>
+        <Col span={12}>
+          {renderStateProvinceField()}
+        </Col>
       </Row>
-
-      {/* Row 4: Country and Zip/Postal Code */}
       <Row gutter={16}>
         <Col span={12}>
           <Form.Item
@@ -332,15 +284,16 @@ const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({ form, t
             name="zip"
             rules={[
               { required: true, message: "Please enter your zip/postal code" },
-              { pattern: /^\d{5}(-\d{4})?$/, message: "Please enter a valid code (e.g., 12345 or 12345-6789)" },
+              {
+                pattern: /^\d{5}(-\d{4})?$/,
+                message: "Please enter a valid zip code (e.g., 12345 or 12345-6789)",
+              },
             ]}
           >
-            <Input placeholder="Enter zip/postal code" />
+            <Input placeholder="Enter your zip/postal code" />
           </Form.Item>
         </Col>
       </Row>
-
-      {/* Branding Section with Logo Preview and Upload */}
       <div style={{ textAlign: "center", marginTop: "40px" }}>
         <Title level={4}>Branding</Title>
         {logoPreview ? (
@@ -364,6 +317,15 @@ const CompanyInfoAndLogoForm: React.FC<CompanyInfoAndLogoFormProps> = ({ form, t
         <div style={{ marginTop: "10px", color: "red" }}>
           DEBUG - Logo served from: {logoPreview || "None"}
         </div>
+      </div>
+
+      {/* On-screen debug panel for tenant info (if provided) */}
+      <div style={{ marginTop: "20px", padding: "10px", backgroundColor: "#e8e8e8", borderRadius: "4px" }}>
+        <Title level={5}>Tenant Debug Info</Title>
+        <Text strong>Tenant Data Received:</Text>
+        <pre style={{ backgroundColor: "#fff", padding: "8px", borderRadius: "4px", marginTop: "10px" }}>
+          {tenant ? JSON.stringify(tenant, null, 2) : "No tenant data provided"}
+        </pre>
       </div>
     </>
   );

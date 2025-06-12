@@ -1,10 +1,10 @@
-// src/context/TenantContext.tsx
+"use client";
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
 export interface Tenant {
   subscriptionId?: string;
   autoRenew?: boolean;
-  // add any additional tenant properties here
+  // Add any additional tenant properties here
 }
 
 interface TenantContextType {
@@ -18,7 +18,7 @@ export const TenantProvider = ({
   initialTenantData,
   children,
 }: {
-  initialTenantData?: Tenant;
+  initialTenantData?: Tenant | null;
   children: ReactNode;
 }) => {
   const [tenant, setTenant] = useState<Tenant | null>(initialTenantData || null);
@@ -36,5 +36,3 @@ export const useTenant = () => {
   }
   return context;
 };
-
-export default TenantContext;
