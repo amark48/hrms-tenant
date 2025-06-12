@@ -1,6 +1,6 @@
 "use client";
 import '@ant-design/v5-patch-for-react-19';
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Form, Checkbox, Typography, Spin, Alert } from "antd";
 
 const { Title, Paragraph } = Typography;
@@ -19,21 +19,34 @@ const AuthenticationSetupStep: React.FC<AuthenticationSetupStepProps> = ({
   // Get the shared form instance from the parent's Form.
   const formInstance = Form.useFormInstance();
 
-  // Local state to track if MFA is enabled.
-  const [mfaEnabled, setMfaEnabled] = useState<boolean>(initialMfaEnabled);
+  // useMemo to produce a stable default for allowed MFA
+  const defaultAllowedMfa = useMemo(() => {
+    return initialAllowedMfa ?? [];
+  }, [initialAllowedMfa]);
+
+  // Use a ref to ensure we only initialize once on mount.
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (!initializedRef.current) {
+      if (formInstance.getFieldValue("mfaEnabled") === undefined) {
+        formInstance.setFieldsValue({ mfaEnabled: initialMfaEnabled });
+      }
+      if (formInstance.getFieldValue("allowedMfa") === undefined) {
+        formInstance.setFieldsValue({ allowedMfa: defaultAllowedMfa });
+      }
+      initializedRef.current = true;
+    }
+  }, [formInstance, initialMfaEnabled, defaultAllowedMfa]);
+
+  // Read current values from the form via useWatch.
+  const mfaEnabled = Form.useWatch("mfaEnabled", formInstance) ?? false;
+  const allowedMfa = Form.useWatch("allowedMfa", formInstance) ?? defaultAllowedMfa;
+
   // Local state for available MFA options fetched from the endpoint.
   const [availableMfaOptions, setAvailableMfaOptions] = useState<string[]>([]);
   // Local state for tracking options loading and any fetch errors.
   const [loadingOptions, setLoadingOptions] = useState<boolean>(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  // Local state for the selected MFA methods.
-  const [selectedMfaMethods, setSelectedMfaMethods] = useState<string[]>(initialAllowedMfa);
-
-  // On mount, update MFA enabled state from the shared form.
-  useEffect(() => {
-    const currentValue = formInstance.getFieldValue("mfaEnabled");
-    setMfaEnabled(currentValue || false);
-  }, [formInstance]);
 
   // When MFA is enabled, fetch the available MFA options.
   useEffect(() => {
@@ -46,7 +59,6 @@ const AuthenticationSetupStep: React.FC<AuthenticationSetupStepProps> = ({
           if (!res.ok) {
             throw new Error("Failed to fetch MFA options.");
           }
-          // Expecting an array of strings, e.g. ["TOTP", "EMAIL", "SMS"]
           const data: string[] = await res.json();
           setAvailableMfaOptions(data);
           setFetchError(null);
@@ -58,23 +70,22 @@ const AuthenticationSetupStep: React.FC<AuthenticationSetupStepProps> = ({
       };
       fetchMfaOptions();
     } else {
-      // If MFA is disabled, clear options and selection.
       setAvailableMfaOptions([]);
-      setSelectedMfaMethods([]);
+      formInstance.setFieldsValue({ allowedMfa: [] });
     }
-  }, [mfaEnabled]);
+  }, [mfaEnabled, formInstance]);
 
   // Handler for MFA-enabled checkbox changes.
-  const handleMfaCheckboxChange = (e: any) => {
+  const handleMfaCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const checked = e.target.checked;
-    setMfaEnabled(checked);
-    // Update the shared form field.
     formInstance.setFieldsValue({ mfaEnabled: checked });
+    if (!checked) {
+      formInstance.setFieldsValue({ allowedMfa: [] });
+    }
   };
 
   // Handler for changes in the allowed MFA methods.
   const handleMfaMethodsChange = (checkedValues: any) => {
-    setSelectedMfaMethods(checkedValues);
     formInstance.setFieldsValue({ allowedMfa: checkedValues });
   };
 
@@ -99,16 +110,17 @@ const AuthenticationSetupStep: React.FC<AuthenticationSetupStepProps> = ({
       {/* Render allowed MFA methods if MFA is enabled */}
       {mfaEnabled && (
         <>
+          <Paragraph>Please select the MFA type(s):</Paragraph>
           {loadingOptions && (
-            <Spin tip="Loading MFA options..." style={{ marginBottom: "16px" }} />
+            <Spin style={{ marginBottom: "16px" }} />
           )}
-          {(!loadingOptions && !fetchError) && (
+          {!loadingOptions && !fetchError && (
             <Form.Item
               name="allowedMfa"
-              initialValue={initialAllowedMfa}
               rules={[{ required: true, message: "Please select at least one MFA method" }]}
             >
               <Checkbox.Group
+                value={allowedMfa}
                 options={availableMfaOptions.map((option) => ({
                   label: option,
                   value: option,
@@ -117,7 +129,7 @@ const AuthenticationSetupStep: React.FC<AuthenticationSetupStepProps> = ({
               />
             </Form.Item>
           )}
-          {mfaEnabled && fetchError && (
+          {fetchError && (
             <Alert message="Error" description={fetchError} type="error" showIcon />
           )}
         </>

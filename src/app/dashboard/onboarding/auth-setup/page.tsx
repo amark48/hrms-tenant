@@ -67,7 +67,7 @@ export default function AuthSetupPage() {
     const fetchMfaTypes = async () => {
       try {
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/auth/get-mfa-types`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/auth/get-mfa-types`
         );
         if (!response.ok) {
           throw new Error("Failed to fetch MFA types.");
@@ -120,7 +120,7 @@ export default function AuthSetupPage() {
   const onFinish = (values: any) => {
     console.log("Form values:", values);
     message.success("Security setup saved!");
-    router.push("/onboarding/billing");
+    router.push("/dashboard/onboarding/billing");
   };
 
   return (
@@ -315,7 +315,7 @@ export default function AuthSetupPage() {
 
             <Form.Item>
               <Space>
-                <Button onClick={() => router.push("/onboarding/subscription")}>
+                <Button onClick={() => router.push("/dashboard/onboarding/subscription")}>
                   Back
                 </Button>
                 <Button onClick={() => message.success("Progress saved!")}>

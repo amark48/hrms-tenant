@@ -60,11 +60,11 @@ export default function SubscriptionSelectionPage() {
       return;
     }
     // You might want to persist the selection to an API or context.
-    router.push("/onboarding/auth-setup");
+    router.push("/dashboard/onboarding/auth-setup");
   };
 
   const onBack = () => {
-    router.push("/onboarding/upload-logo");
+    router.push("/dashboard/onboarding/upload-logo");
   };
 
   return (

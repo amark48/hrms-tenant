@@ -180,9 +180,7 @@ export default function LoginPage() {
             </div>
             {/* Right: Get Started Button */}
             <div>
-              <Button type="primary" onClick={() => router.push("/signup")}>
-                Get Started
-              </Button>
+              <Button type="primary" onClick={() => router.push("/")}>Get Started</Button>
             </div>
           </div>
         </div>
@@ -254,7 +252,7 @@ export default function LoginPage() {
                   </Form.Item>
                 </Form>
                 <Paragraph style={{ textAlign: "center", marginTop: "16px" }}>
-                  Don't have an account? <Link href="/signup">Sign Up Now</Link>
+                  Don't have an account? <Link href="/">Sign Up Now</Link>
                 </Paragraph>
               </Card>
             </Col>

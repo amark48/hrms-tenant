@@ -22,12 +22,12 @@ export default function UploadLogoPage() {
   const router = useRouter();
 
   const onBack = () => {
-    router.push("/onboarding/company-info");
+    router.push("/dashboard/onboarding/company-info");
   };
 
   const onNext = () => {
     // Proceed to the next step, e.g., subscription selection.
-    router.push("/onboarding/subscription");
+    router.push("/dashboard/onboarding/subscription");
   };
 
   const handleUploadChange = (info: any) => {
