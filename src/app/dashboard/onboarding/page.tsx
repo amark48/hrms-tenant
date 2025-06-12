@@ -39,7 +39,6 @@ const OnboardingWizard: React.FC = () => {
 
   // We no longer need tenant or saved progress from localStorage.
   // Instead, the wizard always starts with blank fields.
-  const [companyInfo, setCompanyInfo] = useState({});
 
   // For demonstration, assume a default role for UI rendering.
   const userRoles = ["employee"];
@@ -50,8 +49,6 @@ const OnboardingWizard: React.FC = () => {
     try {
       // For steps 1 and 5 (example), validate and store data locally (if needed)
       await form.validateFields();
-      const values = form.getFieldsValue();
-      setCompanyInfo(values);
       message.success("Progress saved!");
     } catch (error) {
       message.error("Validation failed. Please check your inputs.");
@@ -62,8 +59,6 @@ const OnboardingWizard: React.FC = () => {
   const next = async () => {
     try {
       await form.validateFields();
-      const values = form.getFieldsValue();
-      setCompanyInfo(values);
       // Advance to next step
       setCurrentStep((prev) => prev + 1);
     } catch (error) {
@@ -118,7 +113,7 @@ const OnboardingWizard: React.FC = () => {
     },
     {
       title: "Review & Finish",
-      content: <ReviewStep companyInfo={companyInfo} />,
+      content: <ReviewStep />,
     },
   ];
 

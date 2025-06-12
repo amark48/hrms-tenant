@@ -118,7 +118,7 @@ export default function WelcomePage() {
 
           {/* Welcome Content */}
           <Space style={{ display: "flex", justifyContent: "center" }}>
-            <Button type="primary" onClick={() => router.push("/onboarding/secure-login")}>
+            <Button type="primary" onClick={() => router.push("/dashboard/onboarding/secure-login")}>
               Get Started
             </Button>
           </Space>

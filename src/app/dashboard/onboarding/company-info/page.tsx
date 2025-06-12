@@ -41,12 +41,12 @@ export default function CompanyInfoPage() {
   const onFinish = (values: any) => {
     console.log("Company Info Submitted:", values);
     // Proceed to the next step: the Upload Logo page
-    router.push("/onboarding/upload-logo");
+    router.push("/dashboard/onboarding/upload-logo");
   };
 
   // Navigate back to the Welcome page
   const onBack = () => {
-    router.push("/onboarding/welcome");
+    router.push("/dashboard/onboarding/welcome");
   };
 
   // Save progress handler (this is a placeholder—integrate with your API as needed)

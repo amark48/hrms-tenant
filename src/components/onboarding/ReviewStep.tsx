@@ -5,21 +5,13 @@ import { Form, Typography, Divider, Row, Col, Button, Image } from "antd";
 
 const { Title, Text, Paragraph } = Typography;
 
-interface ReviewStepProps {
-  tenant?: Record<string, any>; // Optional tenant data that may contain preexisting info.
-}
-
-const ReviewStep: React.FC<ReviewStepProps> = ({ tenant }) => {
-  // Retrieve all values from the shared form instance.
+const ReviewStep: React.FC = () => {
+  // Retrieve all values from the shared form instance and watch for updates
   const formInstance = Form.useFormInstance();
-  const formValues = formInstance.getFieldsValue();
+  const formValues = Form.useWatch([], formInstance) || {};
 
-  // Merge tenant info (if provided) with form values.
-  // Form values take precedence over tenant values.
-  const mergedValues = {
-    ...(tenant || {}),
-    ...formValues,
-  };
+  // Use formValues directly for the summary
+  const mergedValues = formValues;
 
   // Format card expiry if it's a moment-like value.
   const formattedCardExpiry =

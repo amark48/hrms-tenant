@@ -205,7 +205,7 @@ export default function ReviewPage() {
             bordered
             column={1}
             extra={
-              <Link href="/onboarding/company-info">
+              <Link href="/dashboard/onboarding/company-info">
                 <Button type="link">Edit</Button>
               </Link>
             }
@@ -229,7 +229,7 @@ export default function ReviewPage() {
             bordered
             column={1}
             extra={
-              <Link href="/onboarding/subscription">
+              <Link href="/dashboard/onboarding/subscription">
                 <Button type="link">Edit</Button>
               </Link>
             }
@@ -247,7 +247,7 @@ export default function ReviewPage() {
             bordered
             column={1}
             extra={
-              <Link href="/onboarding/auth-setup">
+              <Link href="/dashboard/onboarding/auth-setup">
                 <Button type="link">Edit</Button>
               </Link>
             }
@@ -268,7 +268,7 @@ export default function ReviewPage() {
             bordered
             column={1}
             extra={
-              <Link href="/onboarding/billing">
+              <Link href="/dashboard/onboarding/billing">
                 <Button type="link">Edit</Button>
               </Link>
             }

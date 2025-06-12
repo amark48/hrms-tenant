@@ -25,7 +25,7 @@ export default function BillingPage() {
     console.log("Billing form values:", values);
     message.success("Billing information saved!");
     // Proceed to the review step
-    router.push("/onboarding/review");
+    router.push("/dashboard/onboarding/review");
   };
 
   return (
@@ -145,7 +145,7 @@ export default function BillingPage() {
             {/* Navigation Buttons */}
             <Form.Item>
               <Space>
-                <Button onClick={() => router.push("/onboarding/enhance-security")}>
+                <Button onClick={() => router.push("/dashboard/onboarding/auth-setup")}>
                   Back
                 </Button>
                 <Button onClick={() => message.success("Progress saved!")}>
