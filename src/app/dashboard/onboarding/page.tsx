@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { Layout, Steps, Button, Form, message, Spin } from "antd";
+import React, { useEffect, useState } from "react";
+import { Layout, Steps, Button, Form, message } from "antd";
 import DashboardHeader from "../DashboardHeader/page";
 
 // Import your step components (ensure these are updated similarly to assume blank inputs)
@@ -33,13 +33,34 @@ const wizardContainerStyle = {
   boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
 };
 
+const LOCAL_STORAGE_KEY = "onboardingData";
+const LOCAL_STEP_KEY = "onboardingCurrentStep";
+
 const OnboardingWizard: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [form] = Form.useForm();
 
-  // We no longer need tenant or saved progress from localStorage.
-  // Instead, the wizard always starts with blank fields.
-  const [companyInfo, setCompanyInfo] = useState({});
+  // Load saved data on mount
+  useEffect(() => {
+    try {
+      const savedValues = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (savedValues) {
+        form.setFieldsValue(JSON.parse(savedValues));
+      }
+      const savedStep = localStorage.getItem(LOCAL_STEP_KEY);
+      if (savedStep) {
+        setCurrentStep(parseInt(savedStep, 10));
+      }
+    } catch (err) {
+      console.error("Failed to load saved onboarding data", err);
+    }
+  }, [form]);
+
+  // Persist step changes
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STEP_KEY, String(currentStep));
+  }, [currentStep]);
+
 
   // For demonstration, assume a default role for UI rendering.
   const userRoles = ["employee"];
@@ -48,10 +69,7 @@ const OnboardingWizard: React.FC = () => {
   // Save progress from the current step.
   const saveProgress = async () => {
     try {
-      // For steps 1 and 5 (example), validate and store data locally (if needed)
       await form.validateFields();
-      const values = form.getFieldsValue();
-      setCompanyInfo(values);
       message.success("Progress saved!");
     } catch (error) {
       message.error("Validation failed. Please check your inputs.");
@@ -62,9 +80,6 @@ const OnboardingWizard: React.FC = () => {
   const next = async () => {
     try {
       await form.validateFields();
-      const values = form.getFieldsValue();
-      setCompanyInfo(values);
-      // Advance to next step
       setCurrentStep((prev) => prev + 1);
     } catch (error) {
       message.error("Please complete the required fields before proceeding.");
@@ -81,6 +96,8 @@ const OnboardingWizard: React.FC = () => {
     try {
       await form.validateFields();
       // Here you would handle final submission.
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      localStorage.removeItem(LOCAL_STEP_KEY);
       message.success("Onboarding process completed!");
     } catch (error) {
       message.error("Please confirm that all information is valid before finishing.");
@@ -118,7 +135,7 @@ const OnboardingWizard: React.FC = () => {
     },
     {
       title: "Review & Finish",
-      content: <ReviewStep companyInfo={companyInfo} />,
+      content: <ReviewStep />,
     },
   ];
 
@@ -141,7 +158,13 @@ const OnboardingWizard: React.FC = () => {
               <Step key={index} title={step.title} />
             ))}
           </Steps>
-          <Form form={form} layout="vertical">
+          <Form
+            form={form}
+            layout="vertical"
+            onValuesChange={(_, allValues) =>
+              localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(allValues))
+            }
+          >
             <div style={wizardContainerStyle}>{steps[currentStep].content}</div>
           </Form>
           <div style={{ marginTop: "24px", textAlign: "right" }}>
