@@ -5,19 +5,14 @@ import { Form, Typography, Divider, Row, Col, Button, Image } from "antd";
 
 const { Title, Text, Paragraph } = Typography;
 
-interface ReviewStepProps {
-  tenant?: Record<string, any>; // Optional tenant data that may contain preexisting info.
-}
-
-const ReviewStep: React.FC<ReviewStepProps> = ({ tenant }) => {
-  // Retrieve all values from the shared form instance.
+const ReviewStep: React.FC = () => {
+  // Retrieve all values from the shared form instance and re-render when they change.
   const formInstance = Form.useFormInstance();
-  const formValues = formInstance.getFieldsValue();
+  const formValues = Form.useWatch([], formInstance) || {};
 
-  // Merge tenant info (if provided) with form values.
-  // Form values take precedence over tenant values.
+  // Create a merged object in case we want to extend this step
+  // with additional preloaded values in the future.
   const mergedValues = {
-    ...(tenant || {}),
     ...formValues,
   };
 
